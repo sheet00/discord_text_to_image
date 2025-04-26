@@ -1,0 +1,6 @@
+discord.py[voice]
+python-dotenv
+openai
+requests
+google-genai
+pillow
