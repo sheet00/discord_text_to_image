@@ -124,11 +124,11 @@ async def handle_book(message):
         await message.channel.send("プロンプトが空にゃ。/book の後に説明文を入れてにゃ")
         return
 
-    await message.channel.send(SEP)
-    await message.channel.send("画像を生成中にゃ")
-
     data = book.markdown_to_json(prompt)
     for paragraph in data["paragraph"]:
+        await message.channel.send(SEP)
+        await message.channel.send("画像を生成中にゃ")
+
         content = paragraph["p"]
         all_text = data["all_text"]
 
