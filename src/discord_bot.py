@@ -58,8 +58,9 @@ async def handle_speech(message):
             await message.channel.send("Voicevoxサーバーが起動していませんにゃ")
             return
 
-        # テキストを200文字ごとに分割
-        texts = [text[i : i + 200] for i in range(0, len(text), 200)]
+        # テキストを分割
+        max_chars = 300
+        texts = [text[i : i + max_chars] for i in range(0, len(text), max_chars)]
         filepaths = []
         for t in texts:
             filepath = synthesize_voice_with_timestamp(t)
