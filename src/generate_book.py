@@ -12,6 +12,12 @@ load_dotenv()
 SEP = "-" * 100
 
 
+class MarkdownData(BaseModel):
+    title: str
+    paragraph: List[str]
+    all_text: str
+
+
 # --- PydanticモデルによるJSONスキーマ定義 ---
 class CharacterInfo(BaseModel):
     """登場人物に関する情報"""
@@ -138,9 +144,10 @@ def get_scene(input_text: str, all_text: str) -> str:
     return result
 
 
-def generate_image(content: str, all_text: str) -> str:
-
-    scene = get_scene(content, all_text)
+def generate_image(data: MarkdownData, target_index: int) -> str:
+    content = data.paragraph[target_index]
+    story_text = data.paragraph[0:target_index]
+    scene = get_scene(content, story_text)
 
     prompt = f"""
 # 指示
@@ -163,7 +170,33 @@ best quality, ultra high res, (photorealistic:1.4), RAW photo, realistic
     return generate_image_from_text_openai(prompt)
 
 
-def markdown_to_json(markdown_text):
+def generate_image(data: MarkdownData, target_index: int) -> str:
+    content = data.paragraph[target_index]
+    story_text = data.all_text
+    scene = get_scene(content, story_text)
+
+    prompt = f"""
+# 指示
+あなたは優秀な映画監督のアシスタントです。
+以下の本文を注意深く読み、このシーンに対する実写画像を生成してください。
+
+# 作風
+best quality, ultra high res, (photorealistic:1.4), RAW photo, realistic
+
+# 人種
+日本人
+
+# 本文
+{content}
+
+# シーン
+{scene}
+    """
+
+    return generate_image_from_text_openai(prompt)
+
+
+def markdown_to_data(markdown_text: str) -> MarkdownData:
     html = markdown.markdown(markdown_text)
     soup = bs4.BeautifulSoup(html, "html.parser")
     # ic(str(soup))
@@ -175,28 +208,26 @@ def markdown_to_json(markdown_text):
     for element in soup.find_all(["hr", "p"]):
         if element.name == "hr":
             if current_paragraph:
-                paragraphs.append(
-                    {"p": current_paragraph.replace("\n", "").replace(" ", "")}
-                )
+                paragraphs.append(current_paragraph.replace("\n", "").replace(" ", ""))
             current_paragraph = ""
         elif element.name == "p":
             current_paragraph += element.text
     if current_paragraph:
-        paragraphs.append({"p": current_paragraph.replace("\n", "").replace(" ", "")})
+        paragraphs.append(current_paragraph.replace("\n", "").replace(" ", ""))
 
-    return {"title": title, "paragraph": paragraphs, "all_text": markdown_text}
+    return MarkdownData(title=title, paragraph=paragraphs, all_text=markdown_text)
 
 
 def main():
     with open("work/02.md", "r", encoding="utf-8") as f:
         input_text = f.read()
 
-    data = markdown_to_json(input_text)
+    data = markdown_to_data(input_text)
 
     # ic(data)
 
-    for paragraph in data["paragraph"]:
-        result = generate_image(paragraph, input_text)
+    for i in range(len(data.paragraph)):
+        result = generate_image(data, i)
         print(result)
 
 
