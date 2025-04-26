@@ -6,3 +6,4 @@ google-genai
 pillow
 icecream
 beautifulsoup4
+boto3

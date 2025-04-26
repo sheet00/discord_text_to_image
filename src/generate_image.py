@@ -9,6 +9,7 @@ from google.genai import types
 from PIL import Image
 from io import BytesIO
 import base64
+from translate import translate_text
 
 SEP = "-" * 100
 
@@ -24,10 +25,9 @@ def generate_image_from_text_openai(input_text: str) -> str:
     # low 1.58 円, medium 6.03 円, high 23.98 円
     quality = "low"
 
-    # 日本語を英語キーワードに変換
-    english_keywords = translate_to_english_keywords(input_text)
+    # 日本語を英語に変換
+    english_keywords = translate_text(text=input_text)
     prompt = english_keywords
-
     print(SEP)
     print("openaiで画像を生成中...")
     print(model, size, quality)
@@ -56,45 +56,11 @@ def generate_image_from_text_openai(input_text: str) -> str:
     return filepath
 
 
-def translate_to_english_keywords(input_text: str) -> str:
-    """
-    Gemini APIを使って日本語の説明文を英語の画像生成用キーワードに変換する
-    """
-    client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-
-    prompt = f"""
-    あなたはプロの英語教師です。
-    次の日本語を画像生成用の英語に変換してください。
-    英語のみをJSON形式で返してください。
-    JSONのキーは "keywords" としてください。
-    日本語: {input_text}
-    """
-
-    class KeywordsResponse(BaseModel):
-        keywords: str
-
-    print(SEP)
-    print(prompt)
-    response = client.models.generate_content(
-        model="gemini-2.0-flash-exp",
-        contents=prompt,
-        config={
-            "response_mime_type": "application/json",
-            "response_schema": KeywordsResponse,
-        },
-    )
-    # JSONとしてパースされたオブジェクトから取得
-    parsed_obj: KeywordsResponse = response.parsed
-    english_keywords = parsed_obj.keywords.strip()
-    print(f"英語キーワード: {english_keywords}")
-    return english_keywords
-
-
 def generate_image_from_text_google(input_text: str) -> str:
     client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
-    # 日本語を英語キーワードに変換
-    english_keywords = translate_to_english_keywords(input_text)
+    # 日本語を英語に変換
+    english_keywords = translate_to_english(text=input_text)
 
     prompt = english_keywords
 
@@ -146,9 +112,8 @@ def generate_image_from_text_google(input_text: str) -> str:
 def edit_image(input_text: str) -> str:
     client = OpenAI()
 
-    english_keywords = translate_to_english_keywords(input_text)
+    english_keywords = translate_text(text=input_text)
     prompt = english_keywords
-
     model = "gpt-image-1"
     size = "1024x1024"
     # low 1.58 円, medium 6.03 円, high 23.98 円

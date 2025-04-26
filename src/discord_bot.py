@@ -1,4 +1,3 @@
-# インストールした discord.py を読み込む
 import os
 from dotenv import load_dotenv
 import discord
@@ -68,7 +67,6 @@ async def handle_speech(message, text):
 
     source = discord.FFmpegPCMAudio(filepath, executable="ffmpg/ffmpeg.exe")
     voice_client.play(source)
-    await message.channel.send("音声を再生するにゃ")
 
 
 async def handle_image_command(message):
@@ -158,6 +156,14 @@ async def handle_mention(message):
     await handle_speech(message, bot_reply)
 
 
+async def handle_book(message, text):
+    await message.channel.send("本の生成中にゃ")
+
+    # 1.markdown_to_json関数を呼び出して、テキストをJSON形式に変換
+    # 2.JSONのparagprahをループ
+    # 3.ParagprahをメッセージとしてSend
+
+
 async def handle_help_command(message):
     help_message = """
     **コマンド一覧:**
@@ -197,6 +203,16 @@ async def on_message(message):
             )
             return
         await handle_speech(message, text)
+        return
+
+    if message.content.startswith("/book"):
+        text = message.content[len("/book") :].strip()
+        if not text:
+            await message.channel.send(
+                "テキストが空にゃ。/book の後に読み上げたい文章を入れてにゃ"
+            )
+            return
+        await handle_book(message, text)
         return
 
     if client.user in message.mentions:
