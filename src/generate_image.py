@@ -18,7 +18,7 @@ load_dotenv()
 
 
 def generate_image_from_text_openai(input_text: str) -> str:
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"), timeout=60)
 
     model = "gpt-image-1"
     size = "1024x1024"
