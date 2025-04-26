@@ -60,7 +60,7 @@ def generate_image_from_text_google(input_text: str) -> str:
     client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
     # 日本語を英語に変換
-    english_keywords = translate_to_english(text=input_text)
+    english_keywords = translate_text(text=input_text)
 
     prompt = english_keywords
 

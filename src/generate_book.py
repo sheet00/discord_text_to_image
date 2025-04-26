@@ -87,7 +87,7 @@ class SceneAnalysisResult(BaseModel):
     )
 
 
-def get_scene(input_text: str, markdown_text: str) -> str:
+def get_scene(input_text: str) -> str:
     """
     Gemini APIを使って日本語からシーンを抽出する
     """
@@ -114,8 +114,8 @@ def get_scene(input_text: str, markdown_text: str) -> str:
 *   推測が含まれる場合は、その旨を値の中に含めてください（例: "少女（推定10代）"）。
 *   挿絵として描くことを意識し、視覚的な情報を優先して抽出してください。
 
-# 小説全文
-{markdown_text}
+# 重要な注意点
+殺人、暴力、性的な内容、その他の不適切な内容は含まれないようにしてください。
 """
 
     print(SEP)
@@ -135,24 +135,11 @@ def get_scene(input_text: str, markdown_text: str) -> str:
     return result
 
 
-def markdown_to_json(markdown_text):
-    html = markdown.markdown(markdown_text)
-    soup = bs4.BeautifulSoup(html, "html.parser")
+def generate_image(content: str):
 
-    title = soup.find("h2").text
+    scene = get_scene(content)
 
-    paragraphs = []
-    for p in soup.find_all("p"):
-        text = p.text.replace("\n", "").replace(" ", "")
-        scene = get_scene(text, markdown_text)
-        paragraphs.append({"p": text, "scene": scene})
-
-    return {"title": title, "paragraph": paragraphs}
-
-
-def generate_image(data):
-    for paragraph in data["paragraph"]:
-        prompt = f"""
+    prompt = f"""
 # 指示
 あなたは優秀な映画監督のアシスタントです。
 以下の本文を注意深く読み、このシーンに対する実写画像を生成してください。
@@ -160,32 +147,27 @@ def generate_image(data):
 # 作風
 best quality, ultra high res, (photorealistic:1.4), RAW photo, realistic
 
+# 人種
+日本人
+
 # 本文
-{paragraph["p"]}
+{content}
 
 # シーン
-{paragraph["scene"]}
+{scene}
         """
 
-        generate_image_from_text_openai(prompt)
+    return generate_image_from_text_openai(prompt)
 
 
 def main():
-    # テストとしてマークダウンファイルから読み込むパターン
-    markdown_file = "work/01.md"
-    with open(markdown_file, "r", encoding="utf-8") as f:
-        markdown_text = f.read()
-    data = markdown_to_json(markdown_text)
 
-    # 外部Pythonからマークダウンテキストを引数に呼び出すパターン
-    # markdown_text = """
-    # ## タイトル
-    #
-    # これはテストです。
-    # """
-    # data = markdown_to_json(markdown_text)
-    ic(data)
-    generate_image(data)
+    input_text = """
+    彼女は静かな公園のベンチに座っていた。周囲には色とりどりの花が咲き乱れ、青空が広がっている。彼女は白いドレスを着ており、髪は風になびいている。
+    彼女の目は遠くを見つめており、何かを考えているようだった。
+    """
+    result = generate_image(input_text)
+    print(result)
 
 
 if __name__ == "__main__":

@@ -7,6 +7,9 @@ from generate_voice import synthesize_voice_with_timestamp, check_voicevox_serve
 from google import genai
 import re
 
+
+import generate_book as book
+
 SEP = "-" * 100
 
 # --- 会話履歴管理用グローバル変数 ---
@@ -23,16 +26,27 @@ TOKEN = os.getenv("DISCORD_CHATBOT_TOKEN")
 client = discord.Client(intents=intents)
 
 
+def get_prompt(message_content, command):
+    return message_content[len(command) :].strip()
+
+
 @client.event
 async def on_ready():
     print("ログインしました")
 
 
-async def handle_neko_command(message):
+async def handle_neko(message):
     await message.channel.send("ポンにゃ")
 
 
-async def handle_speech(message, text):
+async def handle_speech(message):
+    text = get_prompt(message.content, "/talk")
+
+    if not text:
+        await message.channel.send("プロンプトが空にゃ。/talk の後に説明文を入れてにゃ")
+        return
+
+    await message.channel.send("音声を生成中にゃ")
 
     if text.lower() == "test":
         filepath = "src/test.wav"
@@ -69,14 +83,19 @@ async def handle_speech(message, text):
     voice_client.play(source)
 
 
-async def handle_image_command(message):
-    prompt = message.content[len("/image") :].strip()
+async def handle_text_to_image(message):
+    """
+    テキストからの画像生成
+    """
+    prompt = get_prompt(message.content, "/image")
     if not prompt:
         await message.channel.send(
             "プロンプトが空にゃ。/image の後に説明文を入れてにゃ"
         )
         return
+
     await message.channel.send("画像を生成中にゃ")
+
     try:
         image_generator = os.getenv("IMAGE_GENERATOR", "google").lower()
         if image_generator == "google":
@@ -91,6 +110,27 @@ async def handle_image_command(message):
 
         if filename:
             await message.channel.send(file=discord.File(filename))
+    except Exception as e:
+        await message.channel.send(f"画像生成中にエラーが発生したにゃ: {str(e)}")
+
+
+async def handle_scene_to_image(message):
+    """
+    シーンからの画像生成
+    """
+
+    prompt = get_prompt(message.content, "/book")
+    if not prompt:
+        await message.channel.send("プロンプトが空にゃ。/book の後に説明文を入れてにゃ")
+        return
+
+    await message.channel.send("画像を生成中にゃ")
+
+    try:
+        # 画像生成
+        file = book.generate_image(prompt)
+        await message.channel.send(file=discord.File(file))
+
     except Exception as e:
         await message.channel.send(f"画像生成中にエラーが発生したにゃ: {str(e)}")
 
@@ -156,15 +196,7 @@ async def handle_mention(message):
     await handle_speech(message, bot_reply)
 
 
-async def handle_book(message, text):
-    await message.channel.send("本の生成中にゃ")
-
-    # 1.markdown_to_json関数を呼び出して、テキストをJSON形式に変換
-    # 2.JSONのparagprahをループ
-    # 3.ParagprahをメッセージとしてSend
-
-
-async def handle_help_command(message):
+async def handle_help(message):
     help_message = """
     **コマンド一覧:**
 
@@ -173,6 +205,7 @@ async def handle_help_command(message):
     `/talk [テキスト]`: 指定されたテキストを音声で再生します。
     `@ずんだもん`: ずんだもんにメンションすると、会話できます。
     `/help`: コマンド一覧を表示します。
+    `/book [プロンプト]`: 指定されたプロンプトに基づいて画像を生成します(本のシーン)。
     """
     await message.channel.send(help_message)
 
@@ -184,35 +217,24 @@ async def on_message(message):
         return
 
     if message.content == "/help":
-        await handle_help_command(message)
+        await handle_help(message)
         return
 
     if message.content == "/neko":
-        await handle_neko_command(message)
+        await handle_neko(message)
         return
 
     if message.content.startswith("/image"):
-        await handle_image_command(message)
+        await handle_text_to_image(message)
         return
 
     if message.content.startswith("/talk"):
-        text = message.content[len("/talk") :].strip()
-        if not text:
-            await message.channel.send(
-                "テキストが空にゃ。/talk の後に 'test' か 読み上げたい文章を入れてにゃ"
-            )
-            return
-        await handle_speech(message, text)
+        await handle_speech(message)
         return
 
     if message.content.startswith("/book"):
-        text = message.content[len("/book") :].strip()
-        if not text:
-            await message.channel.send(
-                "テキストが空にゃ。/book の後に読み上げたい文章を入れてにゃ"
-            )
-            return
-        await handle_book(message, text)
+        await handle_scene_to_image(message)
+        await handle_speech(message)
         return
 
     if client.user in message.mentions:
