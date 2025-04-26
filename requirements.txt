@@ -4,3 +4,4 @@ openai
 requests
 google-genai
 pillow
+icecream

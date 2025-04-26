@@ -33,30 +33,6 @@ async def handle_neko_command(message):
     await message.channel.send("ポンにゃ")
 
 
-async def handle_speech_test_command(message):
-    await message.channel.send("音声を再生するにゃ")
-
-    if message.author.voice and message.author.voice.channel:
-        channel = message.author.voice.channel
-    else:
-        await message.channel.send("ボイスチャンネルに参加してからコマンドを使ってにゃ")
-        return
-
-    voice_client = message.guild.voice_client
-    if voice_client is None:
-        voice_client = await channel.connect()
-    else:
-        if voice_client.channel != channel:
-            await voice_client.move_to(channel)
-
-    if voice_client.is_playing():
-        voice_client.stop()
-
-    audio_path = "src/test.wav"
-    source = discord.FFmpegPCMAudio(audio_path, executable="ffmpg/ffmpeg.exe")
-    voice_client.play(source)
-
-
 async def handle_speech(message, text):
 
     if text.lower() == "test":
