@@ -83,6 +83,8 @@ async def handle_speech(message):
             ic("前回音声処理が終わるまで待機")
             await asyncio.sleep(3)
 
+    if voice_client is None:
+        voice_client = await channel.connect()
     source = discord.FFmpegPCMAudio(filepath, executable="ffmpg/ffmpeg.exe")
     voice_client.play(source)
 
@@ -128,21 +130,19 @@ async def handle_book(message):
         await message.channel.send("プロンプトが空にゃ。/book の後に説明文を入れてにゃ")
         return
 
-    data = book.markdown_to_json(prompt)
-    for paragraph in data["paragraph"]:
+    data = book.markdown_to_data(prompt)
+    for i in range(len(data.paragraph)):
         await message.channel.send(SEP)
         await message.channel.send("[画像を生成中にゃ]")
 
-        content = paragraph["p"]
-        all_text = data["all_text"]
-
         filename = None
         try:
-            filename = book.generate_image(content, all_text)
+            filename = book.generate_image(data, i)
 
         except Exception as e:
             await message.channel.send(str(e))
 
+        content = data.paragraph[i]
         await message.channel.send(content)
         if filename:
             await message.channel.send(file=discord.File(filename))

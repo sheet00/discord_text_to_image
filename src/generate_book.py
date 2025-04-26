@@ -93,7 +93,7 @@ class SceneAnalysisResult(BaseModel):
     )
 
 
-def get_scene(input_text: str, all_text: str) -> str:
+def get_scene(input_text: str, prev_text: str) -> str:
     """
     Gemini APIを使って日本語からシーンを抽出する
     """
@@ -102,7 +102,7 @@ def get_scene(input_text: str, all_text: str) -> str:
     prompt = f"""
 あなたは優秀な文芸編集者であり、イラストレーターのためのアシスタントです。
 以下の小説本文を注意深く読み、このシーンを挿絵として描くために必要となる具体的な情景描写の要素を抽出・整理してください。
-抽出対象のみで分からない情報は全文を参照してください。
+抽出対象のみで分からない情報は前ページを参照してください。
 
 # 抽出対象の小説本文
 {input_text}
@@ -123,8 +123,8 @@ def get_scene(input_text: str, all_text: str) -> str:
 # 重要な注意点
 殺人、暴力、性的な内容、その他の不適切な内容は含まれないようにしてください。
 
-# 本文
-{all_text}
+# 前ページ
+{prev_text}
 """
 
     print(SEP)
@@ -146,8 +146,10 @@ def get_scene(input_text: str, all_text: str) -> str:
 
 def generate_image(data: MarkdownData, target_index: int) -> str:
     content = data.paragraph[target_index]
-    story_text = data.paragraph[0:target_index]
-    scene = get_scene(content, story_text)
+    # indexが進むにつれて、全文を増やす
+    prev_text = "".join(data.paragraph[:target_index])
+    # ic(content, prev_text)
+    scene = get_scene(content, prev_text)
 
     prompt = f"""
 # 指示
@@ -167,31 +169,23 @@ best quality, ultra high res, (photorealistic:1.4), RAW photo, realistic
 {scene}
         """
 
-    return generate_image_from_text_openai(prompt)
+    #     prompt = f"""
+    # # 指示
+    # あなたは優秀なアニメーション監督のアシスタントです。
+    # 以下の本文を注意深く読み、このシーンに対するイラストを生成してください。
 
+    # # 作風
+    # ジブリ風、日本アニメ調、かわいいイラスト、子供向けイラスト
 
-def generate_image(data: MarkdownData, target_index: int) -> str:
-    content = data.paragraph[target_index]
-    story_text = data.all_text
-    scene = get_scene(content, story_text)
+    # # 人種
+    # 日本人
 
-    prompt = f"""
-# 指示
-あなたは優秀な映画監督のアシスタントです。
-以下の本文を注意深く読み、このシーンに対する実写画像を生成してください。
+    # # 本文
+    # {content}
 
-# 作風
-best quality, ultra high res, (photorealistic:1.4), RAW photo, realistic
-
-# 人種
-日本人
-
-# 本文
-{content}
-
-# シーン
-{scene}
-    """
+    # # シーン
+    # {scene}
+    #         """
 
     return generate_image_from_text_openai(prompt)
 
