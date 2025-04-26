@@ -50,19 +50,23 @@ async def handle_speech(message):
     await message.channel.send("[音声を生成中にゃ]")
 
     if text.lower() == "test":
-        filepath = "src/test.wav"
+        filepaths = ["src/test.wav"]
     else:
-
         # Voicevoxサーバーの起動確認
         status_code = check_voicevox_server()
         if status_code != 200:
             await message.channel.send("Voicevoxサーバーが起動していませんにゃ")
             return
 
-        filepath = synthesize_voice_with_timestamp(text)
-        if filepath is None:
-            await message.channel.send("音声合成に失敗したにゃ")
-            return
+        # テキストを200文字ごとに分割
+        texts = [text[i : i + 200] for i in range(0, len(text), 200)]
+        filepaths = []
+        for t in texts:
+            filepath = synthesize_voice_with_timestamp(t)
+            if filepath is None:
+                await message.channel.send("音声合成に失敗したにゃ")
+                return
+            filepaths.append(filepath)
 
     if message.author.voice and message.author.voice.channel:
         channel = message.author.voice.channel
@@ -77,16 +81,19 @@ async def handle_speech(message):
         if voice_client.channel != channel:
             await voice_client.move_to(channel)
 
-    # 前回音声処理が終わるまで待機
-    if voice_client.is_playing():
-        while voice_client.is_playing():
-            ic("前回音声処理が終わるまで待機")
-            await asyncio.sleep(3)
+    # 音声を順番に再生
+    for filepath in filepaths:
+        # 前回音声処理が終わるまで待機
+        if voice_client.is_playing():
+            while voice_client.is_playing():
+                ic("前回音声処理が終わるまで待機")
+                await asyncio.sleep(3)
 
-    if voice_client is None:
-        voice_client = await channel.connect()
-    source = discord.FFmpegPCMAudio(filepath, executable="ffmpg/ffmpeg.exe")
-    voice_client.play(source)
+        if voice_client is None:
+            voice_client = await channel.connect()
+
+        source = discord.FFmpegPCMAudio(filepath, executable="ffmpg/ffmpeg.exe")
+        voice_client.play(source)
 
 
 async def handle_text_to_image(message):
