@@ -114,7 +114,7 @@ async def handle_text_to_image(message):
         await message.channel.send(f"画像生成中にエラーが発生したにゃ: {str(e)}")
 
 
-async def handle_scene_to_image(message):
+async def handle_book(message):
     """
     シーンからの画像生成
     """
@@ -124,15 +124,24 @@ async def handle_scene_to_image(message):
         await message.channel.send("プロンプトが空にゃ。/book の後に説明文を入れてにゃ")
         return
 
+    await message.channel.send(SEP)
     await message.channel.send("画像を生成中にゃ")
 
-    try:
-        # 画像生成
-        file = book.generate_image(prompt)
-        await message.channel.send(file=discord.File(file))
+    data = book.markdown_to_json(prompt)
+    for paragraph in data["paragraph"]:
+        content = paragraph["p"]
+        all_text = data["all_text"]
 
-    except Exception as e:
-        await message.channel.send(f"画像生成中にエラーが発生したにゃ: {str(e)}")
+        try:
+            filename = book.generate_image(content, all_text)
+            await message.channel.send(content)
+            await message.channel.send(file=discord.File(filename))
+
+        except Exception as e:
+            await message.channel.send(str(e))
+
+        message.content = f"/talk {content}"
+        await handle_speech(message)
 
 
 async def handle_mention(message):
@@ -233,8 +242,7 @@ async def on_message(message):
         return
 
     if message.content.startswith("/book"):
-        await handle_scene_to_image(message)
-        await handle_speech(message)
+        await handle_book(message)
         return
 
     if client.user in message.mentions:

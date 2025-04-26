@@ -87,7 +87,7 @@ class SceneAnalysisResult(BaseModel):
     )
 
 
-def get_scene(input_text: str) -> str:
+def get_scene(input_text: str, all_text: str) -> str:
     """
     Gemini APIを使って日本語からシーンを抽出する
     """
@@ -116,6 +116,9 @@ def get_scene(input_text: str) -> str:
 
 # 重要な注意点
 殺人、暴力、性的な内容、その他の不適切な内容は含まれないようにしてください。
+
+# 本文
+{all_text}
 """
 
     print(SEP)
@@ -135,9 +138,9 @@ def get_scene(input_text: str) -> str:
     return result
 
 
-def generate_image(content: str):
+def generate_image(content: str, all_text: str) -> str:
 
-    scene = get_scene(content)
+    scene = get_scene(content, all_text)
 
     prompt = f"""
 # 指示
@@ -160,14 +163,41 @@ best quality, ultra high res, (photorealistic:1.4), RAW photo, realistic
     return generate_image_from_text_openai(prompt)
 
 
-def main():
+def markdown_to_json(markdown_text):
+    html = markdown.markdown(markdown_text)
+    soup = bs4.BeautifulSoup(html, "html.parser")
+    # ic(str(soup))
 
-    input_text = """
-    彼女は静かな公園のベンチに座っていた。周囲には色とりどりの花が咲き乱れ、青空が広がっている。彼女は白いドレスを着ており、髪は風になびいている。
-    彼女の目は遠くを見つめており、何かを考えているようだった。
-    """
-    result = generate_image(input_text)
-    print(result)
+    title = soup.find("h2").text
+
+    paragraphs = []
+    current_paragraph = ""
+    for element in soup.find_all(["hr", "p"]):
+        if element.name == "hr":
+            if current_paragraph:
+                paragraphs.append(
+                    {"p": current_paragraph.replace("\n", "").replace(" ", "")}
+                )
+            current_paragraph = ""
+        elif element.name == "p":
+            current_paragraph += element.text
+    if current_paragraph:
+        paragraphs.append({"p": current_paragraph.replace("\n", "").replace(" ", "")})
+
+    return {"title": title, "paragraph": paragraphs, "all_text": markdown_text}
+
+
+def main():
+    with open("work/02.md", "r", encoding="utf-8") as f:
+        input_text = f.read()
+
+    data = markdown_to_json(input_text)
+
+    # ic(data)
+
+    for paragraph in data["paragraph"]:
+        result = generate_image(paragraph, input_text)
+        print(result)
 
 
 if __name__ == "__main__":
