@@ -1,3 +1,4 @@
+import asyncio
 import os
 from dotenv import load_dotenv
 import discord
@@ -6,7 +7,7 @@ from generate_image import generate_image_from_text_openai
 from generate_voice import synthesize_voice_with_timestamp, check_voicevox_server
 from google import genai
 import re
-
+from icecream import ic
 
 import generate_book as book
 
@@ -46,7 +47,7 @@ async def handle_speech(message):
         await message.channel.send("プロンプトが空にゃ。/talk の後に説明文を入れてにゃ")
         return
 
-    await message.channel.send("音声を生成中にゃ")
+    await message.channel.send("[音声を生成中にゃ]")
 
     if text.lower() == "test":
         filepath = "src/test.wav"
@@ -76,8 +77,11 @@ async def handle_speech(message):
         if voice_client.channel != channel:
             await voice_client.move_to(channel)
 
+    # 前回音声処理が終わるまで待機
     if voice_client.is_playing():
-        voice_client.stop()
+        while voice_client.is_playing():
+            ic("前回音声処理が終わるまで待機")
+            await asyncio.sleep(3)
 
     source = discord.FFmpegPCMAudio(filepath, executable="ffmpg/ffmpeg.exe")
     voice_client.play(source)
@@ -94,7 +98,7 @@ async def handle_text_to_image(message):
         )
         return
 
-    await message.channel.send("画像を生成中にゃ")
+    await message.channel.send("[画像を生成中にゃ]")
 
     try:
         image_generator = os.getenv("IMAGE_GENERATOR", "google").lower()
@@ -127,18 +131,21 @@ async def handle_book(message):
     data = book.markdown_to_json(prompt)
     for paragraph in data["paragraph"]:
         await message.channel.send(SEP)
-        await message.channel.send("画像を生成中にゃ")
+        await message.channel.send("[画像を生成中にゃ]")
 
         content = paragraph["p"]
         all_text = data["all_text"]
 
+        filename = None
         try:
             filename = book.generate_image(content, all_text)
-            await message.channel.send(content)
-            await message.channel.send(file=discord.File(filename))
 
         except Exception as e:
             await message.channel.send(str(e))
+
+        await message.channel.send(content)
+        if filename:
+            await message.channel.send(file=discord.File(filename))
 
         message.content = f"/talk {content}"
         await handle_speech(message)
