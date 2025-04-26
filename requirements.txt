@@ -5,3 +5,4 @@ requests
 google-genai
 pillow
 icecream
+beautifulsoup4
