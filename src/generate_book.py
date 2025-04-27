@@ -20,10 +20,9 @@ class MarkdownData(BaseModel):
 
 # --- PydanticモデルによるJSONスキーマ定義 ---
 class CharacterInfo(BaseModel):
-    """登場人物に関する情報"""
+    """登場人物一人に関する情報"""
 
     name: Optional[str] = Field(None, description="登場人物の名前（もしあれば）")
-    count: Optional[int] = Field(None, description="登場人物の人数")
     gender_age: Optional[str] = Field(None, description="性別・年齢（推定含む）")
     appearance_clothing: Optional[str] = Field(None, description="外見・服装の特徴")
     expression_pose: Optional[str] = Field(None, description="表情・ポーズ")
@@ -78,7 +77,10 @@ class EmotionAtmosphereInfo(BaseModel):
 class SceneAnalysisResult(BaseModel):
     """抽出されたシーン要素全体の構造"""
 
-    character: CharacterInfo = Field(..., description="登場人物に関する情報")
+    characters: List[CharacterInfo] = Field(
+        ...,
+        description="登場人物に関する情報のリスト。シーンに登場する各キャラクターの情報を個別に格納する。",
+    )
     location: LocationInfo = Field(..., description="場所に関する情報")
     time_weather: TimeWeatherInfo = Field(..., description="時間・天候に関する情報")
     action_situation: ActionSituationInfo = Field(
@@ -107,14 +109,17 @@ def get_scene(input_text: str, prev_text: str) -> str:
 # 抽出対象の小説本文
 {input_text}
 
-# 指示
 *   上記の本文から、以下の要素に関する視覚的な情報を抽出してください。
-    *   登場人物: 名前、人数、性別・年齢、外見・服装、表情・ポーズ
-    *   場所: 具体的な場所、屋内/屋外、時代設定、雰囲気・特徴
-    *   時間・天候: 時間帯、季節、天気、光の状態
-    *   行動・状況: 登場人物の行動、全体の状況
-    *   感情・雰囲気: シーンの雰囲気、登場人物の感情
-    *   重要なオブジェクト: 鍵となる物や小物
+    *   **登場人物 (characters)**: シーンに登場する**各人物**について、以下の情報を**リスト形式**で抽出してください。リストの各要素は一人の人物に対応します。
+        *   名前 (name): 名前（もしあれば）
+        *   性別・年齢 (gender_age): 性別・年齢（推定含む）
+        *   外見・服装 (appearance_clothing): 外見・服装の特徴
+        *   表情・ポーズ (expression_pose): 表情・ポーズ
+    *   場所 (location): 具体的な場所、屋内/屋外、時代設定、雰囲気・特徴
+    *   時間・天候 (time_weather): 時間帯、季節、天気、光の状態
+    *   行動・状況 (action_situation): 登場人物の行動（主要な人物や全体の動き）、全体の状況
+    *   感情・雰囲気 (emotion_atmosphere): シーンの雰囲気、登場人物の感情（主要な人物や全体の感情）
+    *   重要なオブジェクト (important_objects): 鍵となる物や小物のリスト
 *   抽出した結果を、**提供されたJSONスキーマに従ってJSON形式で厳密に出力してください。**
 *   本文中に明示的に書かれていない要素については、JSONの値として `null` を使用するか、スキーマ定義に従って省略してください。
 *   挿絵として描くことを意識し、視覚的な情報を優先して抽出してください。
