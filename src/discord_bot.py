@@ -90,11 +90,11 @@ async def handle_speech(message):
         await message.channel.send("ボイスチャンネルに参加してからコマンドを使ってにゃ")
         return
 
-    # ボイスチャンネル取得
-    voice_client = await check_voice_channel(message, channel)
-
     # 音声を順番に再生
     for filepath in filepaths:
+        # ボイスチャンネル取得
+        voice_client = await check_voice_channel(message, channel)
+
         # 前回音声処理が終わるまで待機
         if voice_client.is_playing():
             while voice_client.is_playing():

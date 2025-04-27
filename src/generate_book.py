@@ -20,12 +20,27 @@ class MarkdownData(BaseModel):
 
 # --- PydanticモデルによるJSONスキーマ定義 ---
 class CharacterInfo(BaseModel):
-    """登場人物一人に関する情報"""
+    """登場キャラクターに関する情報"""
 
-    name: Optional[str] = Field(None, description="登場人物の名前（もしあれば）")
-    gender_age: Optional[str] = Field(None, description="性別・年齢（推定含む）")
-    appearance_clothing: Optional[str] = Field(None, description="外見・服装の特徴")
-    expression_pose: Optional[str] = Field(None, description="表情・ポーズ")
+    type: Optional[str] = Field(
+        None,
+        description="キャラクターの種類（例: 人間, 動物, 植物, 架空の生物, ロボット, 擬人化されたオブジェクト）",
+    )  # Nキャラクタータイプ
+    name: Optional[str] = Field(
+        None, description="キャラクターの名前や呼称（もしあれば。種族名なども可）"
+    )
+    attributes: Optional[str] = Field(
+        None,
+        description="キャラクターの属性（性別、年齢、種類、品種、状態など。例: 若い女性, オスの老犬, 満開の桜, 古いロボット）",
+    )
+    appearance: Optional[str] = Field(
+        None,
+        description="外見の特徴（服装、体型、毛並み、色、形、大きさ、質感、光沢など。例: 青いドレス, 銀色の毛並み, 緑の葉が茂っている, 金属製のボディ）",
+    )
+    state_action: Optional[str] = Field(
+        None,
+        description="キャラクターの状態や行動（表情、ポーズ、動作、様子など。例: 微笑んでいる, 尻尾を振っている, 風に揺れている, 赤く点滅している）",
+    )
 
 
 class LocationInfo(BaseModel):
@@ -110,16 +125,17 @@ def get_scene(input_text: str, prev_text: str) -> str:
 {input_text}
 
 *   上記の本文から、以下の要素に関する視覚的な情報を抽出してください。
-    *   **登場人物 (characters)**: シーンに登場する**各人物**について、以下の情報を**リスト形式**で抽出してください。リストの各要素は一人の人物に対応します。
-        *   名前 (name): 名前（もしあれば）
-        *   性別・年齢 (gender_age): 性別・年齢（推定含む）
-        *   外見・服装 (appearance_clothing): 外見・服装の特徴
-        *   表情・ポーズ (expression_pose): 表情・ポーズ
+    *   **登場キャラクター (characters)**: シーンに登場する各キャラクター（人間、動物、植物、擬人化された物など）について、以下の情報を**リスト形式**で抽出してください。リストの各要素は一体のキャラクターに対応します。
+        *   **種類 (type)**: キャラクターの種類（例: 人間, 犬, 猫, 木, ロボット, 喋るティーポット）
+        *   名前 (name): 名前や呼称（もしあれば）
+        *   属性 (attributes): 性別、年齢、種類、品種、状態など（例: 少年, 白い子猫, 大きな柳の木, 旧式の警備ドローン）
+        *   外見 (appearance): 服装、体型、毛並み、色、形、大きさ、質感など（例: 赤いセーター, ふさふさの尻尾, 緑の葉が茂っている, 傷のついた金属）
+        *   状態・行動 (state_action): 表情、ポーズ、動作、様子など（例: 驚いた顔, 丸くなって眠っている, 枝が風に揺れている, ゆっくりと回転している）
     *   場所 (location): 具体的な場所、屋内/屋外、時代設定、雰囲気・特徴
     *   時間・天候 (time_weather): 時間帯、季節、天気、光の状態
-    *   行動・状況 (action_situation): 登場人物の行動（主要な人物や全体の動き）、全体の状況
-    *   感情・雰囲気 (emotion_atmosphere): シーンの雰囲気、登場人物の感情（主要な人物や全体の感情）
-    *   重要なオブジェクト (important_objects): 鍵となる物や小物のリスト
+    *   行動・状況 (action_situation): キャラクター（達）の行動（主要なアクション）、全体の状況
+    *   感情・雰囲気 (emotion_atmosphere): シーンの雰囲気、キャラクター（達）の感情や状態
+    *   重要なオブジェクト (important_objects): キャラクターとして扱わない、シーンの鍵となる物や小物のリスト
 *   抽出した結果を、**提供されたJSONスキーマに従ってJSON形式で厳密に出力してください。**
 *   本文中に明示的に書かれていない要素については、JSONの値として `null` を使用するか、スキーマ定義に従って省略してください。
 *   挿絵として描くことを意識し、視覚的な情報を優先して抽出してください。
