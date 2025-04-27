@@ -52,6 +52,7 @@ async def check_voice_channel(message, channel):
             return None
     elif voice_client.channel != channel:
         await voice_client.move_to(channel)
+
     return voice_client
 
 

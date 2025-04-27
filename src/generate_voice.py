@@ -66,4 +66,4 @@ def synthesize_voice_with_timestamp(text, speaker=1):
         return filepath
     else:
         print(f"Error in synthesis: {synthesis_response.text}")
-        return None
+        raise Exception(f"Error in synthesis: {synthesis_response.text}")
