@@ -68,11 +68,6 @@ async def handle_speech(message):
     if text.lower() == "test":
         filepaths = ["src/test.wav"]
     else:
-        # Voicevoxサーバーの起動確認
-        status_code = check_voicevox_server()
-        if status_code != 200:
-            await message.channel.send("Voicevoxサーバーが起動していませんにゃ")
-            return
 
         # テキストを分割
         max_chars = 400
@@ -175,6 +170,7 @@ async def handle_mention(message):
 
     # メンション部分を除去したユーザー発言
     user_message = re.sub(r"<@\d+>", "", message.content).strip()
+    ic(user_message)
     channel_id = message.channel.id
 
     # 履歴取得（なければ空リストで初期化）
@@ -219,6 +215,7 @@ async def handle_mention(message):
     )
 
     bot_reply = response.text
+    ic(bot_reply)
 
     # 履歴に今回のやりとりを追加
     history.append({"user": user_message, "bot": bot_reply})
@@ -228,7 +225,8 @@ async def handle_mention(message):
     channel_histories[channel_id] = history
 
     # 音声返信
-    await handle_speech(message, bot_reply)
+    message.content = f"/talk {bot_reply}"
+    await handle_speech(message)
 
 
 async def handle_help(message):
