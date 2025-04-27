@@ -248,6 +248,20 @@ async def handle_help(message):
 @client.event
 async def on_message(message):
 
+    async def get_text_from_attachment(message):
+        # 通常テキスト 添付なし
+        if len(message.atatachments) == 0:
+            return message
+
+        # 添付ファイルパターン
+        attachment = message.attachments[0]
+        if attachment.filename == "message.txt":
+            data = await attachment.read()
+            text = data.decode("utf-8")
+            message.content = f"/book {text}"
+
+            return message
+
     if message.author.bot:
         return
 
@@ -267,20 +281,18 @@ async def on_message(message):
         await handle_speech(message)
         return
 
-    if message.content.startswith("/book"):
-        await handle_book(message)
-        return
-
-    # ファイルとして添付した場合
-    if message.attachments:
+    async def get_text_from_attachment(message):
         for attachment in message.attachments:
             if attachment.filename == "message.txt":
                 data = await attachment.read()
                 text = data.decode("utf-8")
-                message.content = f"/book {text}"
-                # ic(message.content)
-                await handle_book(message)
-                return
+                return text
+        return None
+
+    if message.content.startswith("/book"):
+        message = await get_text_from_attachment(message)
+        await handle_book(message)
+        return
 
     if client.user in message.mentions:
         await handle_mention(message)
