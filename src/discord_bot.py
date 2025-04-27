@@ -248,9 +248,16 @@ async def handle_help(message):
 @client.event
 async def on_message(message):
 
-    async def get_text_from_attachment(message):
+    async def extract_text_from_attachment(message):
+        """
+        添付ファイルあり
+        message.txtという名前の添付ファイルがある場合、
+        その内容を読み取り、/bookコマンドの引数として設定します。
+
+        添付がない場合は通常message応答
+        """
         # 通常テキスト 添付なし
-        if len(message.atatachments) == 0:
+        if len(message.attachments) == 0:
             return message
 
         # 添付ファイルパターン
@@ -258,6 +265,8 @@ async def on_message(message):
         if attachment.filename == "message.txt":
             data = await attachment.read()
             text = data.decode("utf-8")
+            # MDに/bookが含まれている場合は除去
+            text = text.replace("/book", "")
             message.content = f"/book {text}"
 
             return message
@@ -281,16 +290,8 @@ async def on_message(message):
         await handle_speech(message)
         return
 
-    async def get_text_from_attachment(message):
-        for attachment in message.attachments:
-            if attachment.filename == "message.txt":
-                data = await attachment.read()
-                text = data.decode("utf-8")
-                return text
-        return None
-
     if message.content.startswith("/book"):
-        message = await get_text_from_attachment(message)
+        message = await extract_text_from_attachment(message)
         await handle_book(message)
         return
 
