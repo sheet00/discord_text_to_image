@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 SEP = "-" * 100
-SPEED_SCALE = 1.2
+SPEED_SCALE = 1.3
 VOICEVOX_EXE_PATH = os.environ.get("VOICEVOX_EXE_PATH")
 
 
