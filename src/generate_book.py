@@ -139,7 +139,7 @@ def get_scene(input_text: str, prev_text: str) -> str:
     )
     # JSONとしてパースされたオブジェクトから取得
     result = SceneAnalysisResult.model_validate_json(response.text)
-    result = result.model_dump_json()
+    result = result.model_dump()
     ic(input_text, result)
     return result
 

@@ -26,8 +26,11 @@ def generate_image_from_text_openai(input_text: str) -> str:
     quality = "low"
 
     # 日本語を英語に変換
-    english_keywords = translate_text(text=input_text)
-    prompt = english_keywords
+    # english_txt = translate_text(text=input_text)
+    # prompt = english_txt
+
+    prompt = input_text
+
     print(SEP)
     print("openaiで画像を生成中...")
     print(model, size, quality)
@@ -60,9 +63,10 @@ def generate_image_from_text_google(input_text: str) -> str:
     client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
     # 日本語を英語に変換
-    english_keywords = translate_text(text=input_text)
+    # english_txt = translate_text(text=input_text)
+    # prompt = english_txt
 
-    prompt = english_keywords
+    prompt = input_text
 
     print(SEP)
     print("Google Geminiで画像を生成中...")

@@ -267,21 +267,20 @@ async def on_message(message):
         await handle_speech(message)
         return
 
-    # ファイルがある場合
-    ic(message.attachments)
+    if message.content.startswith("/book"):
+        await handle_book(message)
+        return
+
+    # ファイルとして添付した場合
     if message.attachments:
         for attachment in message.attachments:
             if attachment.filename == "message.txt":
                 data = await attachment.read()
                 text = data.decode("utf-8")
                 message.content = f"/book {text}"
-                ic(message.content)
+                # ic(message.content)
                 await handle_book(message)
                 return
-
-    if message.content.startswith("/book"):
-        await handle_book(message)
-        return
 
     if client.user in message.mentions:
         await handle_mention(message)
