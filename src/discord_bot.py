@@ -40,6 +40,21 @@ async def handle_neko(message):
     await message.channel.send("ポンにゃ")
 
 
+async def check_voice_channel(message, channel):
+    voice_client = message.guild.voice_client
+    if voice_client is None or not voice_client.is_connected():
+        try:
+            voice_client = await channel.connect()
+        except Exception as e:
+            await message.channel.send(
+                f"ボイスチャンネルへの接続に失敗したにゃ: {str(e)}"
+            )
+            return None
+    elif voice_client.channel != channel:
+        await voice_client.move_to(channel)
+    return voice_client
+
+
 async def handle_speech(message):
     text = get_prompt(message.content, "/talk")
 
@@ -59,7 +74,7 @@ async def handle_speech(message):
             return
 
         # テキストを分割
-        max_chars = 300
+        max_chars = 400
         texts = [text[i : i + max_chars] for i in range(0, len(text), max_chars)]
         filepaths = []
         for t in texts:
@@ -75,12 +90,8 @@ async def handle_speech(message):
         await message.channel.send("ボイスチャンネルに参加してからコマンドを使ってにゃ")
         return
 
-    voice_client = message.guild.voice_client
-    if voice_client is None:
-        voice_client = await channel.connect()
-    else:
-        if voice_client.channel != channel:
-            await voice_client.move_to(channel)
+    # ボイスチャンネル取得
+    voice_client = await check_voice_channel(message, channel)
 
     # 音声を順番に再生
     for filepath in filepaths:
@@ -90,9 +101,8 @@ async def handle_speech(message):
                 ic("前回音声処理が終わるまで待機")
                 await asyncio.sleep(3)
 
-        if voice_client is None:
-            voice_client = await channel.connect()
-
+        # ボイスチャンネル再取得
+        voice_client = await check_voice_channel(message, channel)
         source = discord.FFmpegPCMAudio(filepath, executable="ffmpg/ffmpeg.exe")
         voice_client.play(source)
 
@@ -237,6 +247,7 @@ async def handle_help(message):
 # メッセージ受信時に動作する処理
 @client.event
 async def on_message(message):
+
     if message.author.bot:
         return
 
@@ -255,6 +266,18 @@ async def on_message(message):
     if message.content.startswith("/talk"):
         await handle_speech(message)
         return
+
+    # ファイルがある場合
+    ic(message.attachments)
+    if message.attachments:
+        for attachment in message.attachments:
+            if attachment.filename == "message.txt":
+                data = await attachment.read()
+                text = data.decode("utf-8")
+                message.content = f"/book {text}"
+                ic(message.content)
+                await handle_book(message)
+                return
 
     if message.content.startswith("/book"):
         await handle_book(message)
