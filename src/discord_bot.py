@@ -4,15 +4,14 @@ from dotenv import load_dotenv
 import discord
 from generate_image import generate_image_from_text_google
 from generate_image import generate_image_from_text_openai
-from generate_voice import synthesize_voice_with_timestamp, check_voicevox_server
+from generate_voice import synthesize_voice_with_timestamp
 from google import genai
 import re
 from icecream import ic
 from tenacity import retry, stop_after_attempt, wait_fixed
-import math
-
-
 import generate_book as book
+
+import utils as utils
 
 SEP = "-" * 100
 
@@ -37,38 +36,6 @@ def get_prompt(message_content, command):
 @client.event
 async def on_ready():
     print("ログインしました")
-
-
-def split_text(text: str) -> list[str]:
-    """
-    テキストをsplit_size字以下になるまで分割する。
-    split_size字以内の場合は分割しない。
-    分割数は動的に決定する。
-    """
-
-    split_size = 300
-
-    if len(text) <= split_size:
-        return [text]
-
-    parts = [text]
-    result = []
-
-    while parts:
-        part = parts.pop(0)
-        if len(part) <= split_size:
-            result.append(part)
-        else:
-            # 分割数を決定 (パーツの長さをsplit_sizeで割った値を切り上げ)
-            num_splits = math.ceil(len(part) / split_size)
-            split_size = len(part) // num_splits
-
-            for i in range(num_splits):
-                start = i * split_size
-                end = (i + 1) * split_size if i < num_splits - 1 else len(part)
-                parts.append(part[start:end])
-
-    return result
 
 
 async def handle_neko(message):
@@ -113,7 +80,7 @@ async def handle_speech(message):
         return
 
     # テキストを分割
-    texts = split_text(text)
+    texts = utils.split_text(text)
 
     # ボイスチャンネルの確認 (ループ前に一度行う)
     if not (message.author.voice and message.author.voice.channel):

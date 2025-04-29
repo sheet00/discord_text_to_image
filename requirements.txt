@@ -8,3 +8,4 @@ icecream
 beautifulsoup4
 boto3
 tenacity
+pytest
