@@ -6,7 +6,7 @@ from google import genai
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from typing import Optional, List
-from generate_image import generate_image_from_text_openai
+import generate_image as gi
 
 load_dotenv()
 SEP = "-" * 100
@@ -150,7 +150,7 @@ def get_scene(input_text: str, prev_text: str) -> str:
     print(SEP)
     # print(prompt)
     response = client.models.generate_content(
-        model="gemini-2.0-flash-exp",
+        model="gemini-2.5-pro-exp-03-25",
         contents=prompt,
         config={
             "response_mime_type": "application/json",
@@ -436,7 +436,7 @@ def generate_image(data: MarkdownData, target_index: int) -> str:
 
     prompt = get_photo_prompt(content, scene)
     # ic(prompt)
-    return generate_image_from_text_openai(prompt)
+    return gi.generate_image_from_text_google(prompt)
 
 
 def markdown_to_data(markdown_text: str) -> MarkdownData:

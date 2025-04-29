@@ -7,6 +7,7 @@ from google import genai
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from typing import Optional, List
+import generate_image as gi
 
 load_dotenv()
 SEP = "-" * 100
@@ -144,7 +145,7 @@ def get_scene(input_text: str, prev_text: str) -> str:
     print(SEP)
     # print(prompt)
     response = client.models.generate_content(
-        model="gemini-2.0-flash-exp",
+        model="gemini-2.5-pro-exp-03-25",
         contents=prompt,
         config={
             "response_mime_type": "application/json",
@@ -424,52 +425,9 @@ def generate_image(input_text: str) -> str:
 
     scene = get_scene(input_text, "")
 
-    prompt = get_manga_prompt(input_text, scene)
+    prompt = get_photo_prompt(input_text, scene)
 
-    # ic(prompt)
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"), timeout=60)
-
-    model = "gpt-image-1"
-    size = "1024x1024"
-    # low 1.58 円, medium 6.03 円, high 23.98 円
-    quality = "low"
-
-    qualities = ["low", "medium", "high"]
-    filepaths = []
-
-    for quality in qualities:
-        # 日本語を英語に変換
-        # english_txt = translate_text(text=input_text)
-        # prompt = english_txt
-
-        print(SEP)
-        print("openaiで画像を生成中...")
-        print(model, size, quality)
-        print(prompt)
-
-        # 画像の生成
-        result = client.images.generate(
-            model=model,
-            prompt=prompt,
-            size=size,
-            quality=quality,
-        )
-
-        # 画像をダウンロードして保存
-        # 画像の保存
-        image_base64 = result.data[0].b64_json
-        image_bytes = base64.b64decode(image_base64)
-
-        # imgディレクトリがなければ作成
-        os.makedirs("img", exist_ok=True)
-        filename = datetime.now().strftime(f"%Y%m%d_%H%M%S_openai_{quality}.png")
-        filepath = os.path.join("img", filename)
-        with open(filepath, "wb") as f:
-            f.write(image_bytes)
-        print(f"画像を '{filepath}' に保存しました。")
-        filepaths.append(filepath)
-
-    return filepaths
+    return gi.generate_image_from_text_openai(prompt)
 
 
 def main():

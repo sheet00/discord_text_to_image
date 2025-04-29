@@ -1,4 +1,5 @@
 import os
+from icecream import ic
 from dotenv import load_dotenv
 from pydantic import BaseModel
 from openai import OpenAI
@@ -45,13 +46,12 @@ def generate_image_from_text_openai(input_text: str) -> str:
     )
 
     # 画像をダウンロードして保存
-    # 画像の保存
     image_base64 = result.data[0].b64_json
     image_bytes = base64.b64decode(image_base64)
 
     # imgディレクトリがなければ作成
     os.makedirs("img", exist_ok=True)
-    filename = datetime.now().strftime("%Y%m%d_%H%M%S_openai.png")
+    filename = datetime.now().strftime(f"%Y%m%d_%H%M%S_openai_{quality}.png")
     filepath = os.path.join("img", filename)
     with open(filepath, "wb") as f:
         f.write(image_bytes)
