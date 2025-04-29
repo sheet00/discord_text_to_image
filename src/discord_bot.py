@@ -43,18 +43,21 @@ async def handle_neko(message):
 
 @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
 async def check_voice_channel(message, channel):
-
     voice_client = message.guild.voice_client
+    ic(voice_client)
     if voice_client is None or not voice_client.is_connected():
         try:
             voice_client = await channel.connect()
         except Exception as e:
+            if str(e) == "Already connected to a voice channel.":
+                # すでに接続されている場合は、何もしない
+                return voice_client
+
             await message.channel.send(
                 f"ボイスチャンネルへの接続に失敗したにゃ: {str(e)}"
             )
+
             raise e
-    elif voice_client.channel != channel:
-        await voice_client.move_to(channel)
 
     return voice_client
 
