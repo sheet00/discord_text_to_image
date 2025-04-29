@@ -153,6 +153,12 @@ async def handle_speech(message):
                 fut = asyncio.run_coroutine_threadsafe(coro, client.loop)
                 try:
                     fut.result()
+                    # 切断後に1秒待機
+                    coro_sleep = asyncio.sleep(1)
+                    fut_sleep = asyncio.run_coroutine_threadsafe(
+                        coro_sleep, client.loop
+                    )
+                    fut_sleep.result()
                 except Exception as e:
                     ic(f"切断中にエラーが発生しました: {e}")
 
