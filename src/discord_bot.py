@@ -72,7 +72,7 @@ async def handle_speech(message):
     else:
 
         # テキストを分割
-        max_chars = 400
+        max_chars = 200
         texts = [text[i : i + max_chars] for i in range(0, len(text), max_chars)]
         filepaths = []
         for t in texts:
