@@ -37,6 +37,10 @@ async def on_ready():
     print("ログインしました")
 
 
+def split_text(text, max_chars=300):
+    return [text[i : i + max_chars] for i in range(0, len(text), max_chars)]
+
+
 async def handle_neko(message):
     await message.channel.send("ポンにゃ")
 
@@ -76,10 +80,7 @@ async def handle_speech(message):
     if text.lower() == "test":
         filepaths = ["src/test.wav"]
     else:
-
-        # テキストを分割
-        max_chars = 300
-        texts = [text[i : i + max_chars] for i in range(0, len(text), max_chars)]
+        texts = split_text(text)
         filepaths = []
         for t in texts:
             filepath = synthesize_voice_with_timestamp(t)
