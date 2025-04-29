@@ -8,6 +8,7 @@ from generate_voice import synthesize_voice_with_timestamp, check_voicevox_serve
 from google import genai
 import re
 from icecream import ic
+from retry import retry
 
 import generate_book as book
 
@@ -40,6 +41,7 @@ async def handle_neko(message):
     await message.channel.send("ポンにゃ")
 
 
+@retry(tries=3)
 async def check_voice_channel(message, channel):
     voice_client = message.guild.voice_client
     if voice_client is None or not voice_client.is_connected():
@@ -49,7 +51,7 @@ async def check_voice_channel(message, channel):
             await message.channel.send(
                 f"ボイスチャンネルへの接続に失敗したにゃ: {str(e)}"
             )
-            return None
+            raise e
     elif voice_client.channel != channel:
         await voice_client.move_to(channel)
 
