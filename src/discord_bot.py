@@ -37,8 +37,25 @@ async def on_ready():
     print("ログインしました")
 
 
-def split_text(text, max_chars=300):
-    return [text[i : i + max_chars] for i in range(0, len(text), max_chars)]
+def split_text(text: str) -> list[str]:
+    """
+    テキストを300字以下になるまで2分割する。
+    300字以内の場合は分割しない。
+    """
+    if len(text) <= 300:
+        return [text]
+    else:
+        result = []
+        parts = [text]
+        while parts:
+            part = parts.pop(0)
+            if len(part) <= 300:
+                result.append(part)
+            else:
+                mid = len(part) // 2
+                parts.append(part[:mid])
+                parts.append(part[mid:])
+        return result
 
 
 async def handle_neko(message):
@@ -77,8 +94,8 @@ async def handle_speech(message):
 
     await message.channel.send("[音声を生成中にゃ]")
 
-    if text.lower() == "test":
-        filepaths = ["src/test.wav"]
+:start_line:97
+-------
     else:
         texts = split_text(text)
         filepaths = []
