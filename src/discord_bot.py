@@ -92,42 +92,50 @@ async def handle_speech(message):
         await message.channel.send("プロンプトが空にゃ。/talk の後に説明文を入れてにゃ")
         return
 
-    await message.channel.send("[音声を生成中にゃ]")
+    # テキストを分割
+    texts = split_text(text)
 
-:start_line:97
--------
-    else:
-        texts = split_text(text)
-        filepaths = []
-        for t in texts:
-            filepath = synthesize_voice_with_timestamp(t)
-            if filepath is None:
-                await message.channel.send("音声合成に失敗したにゃ")
-                return
-            filepaths.append(filepath)
-
-    if message.author.voice and message.author.voice.channel:
-        channel = message.author.voice.channel
-    else:
+    # ボイスチャンネルの確認 (ループ前に一度行う)
+    if not (message.author.voice and message.author.voice.channel):
         await message.channel.send("ボイスチャンネルに参加してからコマンドを使ってにゃ")
         return
-
-    # 音声を順番に再生
+    channel = message.author.voice.channel
     voice_client = None
-    for filepath in filepaths:
-        # ボイスチャンネル取得
-        voice_client = await check_voice_channel(message, channel)
 
-        # 前回音声処理が終わるまで待機
-        if voice_client.is_playing():
-            while voice_client.is_playing():
-                ic("前回音声処理が終わるまで待機")
-                await asyncio.sleep(3)
+    # 各テキスト断片ごとに音声合成と再生を実行
+    for t in texts:
 
-        # ボイスチャンネル再取得
+        await message.channel.send("[音声を生成中にゃ]")
+
+        # 1. 音声合成
+        filepath = synthesize_voice_with_timestamp(t)
+        if filepath is None:
+            await message.channel.send(
+                f"テキスト「{t[:20]}...」の音声合成に失敗したにゃ"
+            )
+            continue  # 次のテキストへ
+
+        # 2. ボイスチャンネル接続/再接続 (毎回確認)
         voice_client = await check_voice_channel(message, channel)
+        if not voice_client:  # 接続失敗した場合
+            await message.channel.send(
+                "ボイスチャンネルへの接続に失敗したため、再生を中断するにゃ"
+            )
+            return
+
+        # 3. 再生中の場合は待機
+        while voice_client.is_playing():
+            ic("前回音声処理が終わるまで待機")
+            await asyncio.sleep(1)
+
+        # 4. 音声再生
         source = discord.FFmpegPCMAudio(filepath, executable="ffmpg/ffmpeg.exe")
         voice_client.play(source)
+
+    # finally:
+    # # 再生終了後に切断する場合はコメント解除
+    # if voice_client and voice_client.is_connected():
+    #     await voice_client.disconnect()
 
 
 async def handle_text_to_image(message):

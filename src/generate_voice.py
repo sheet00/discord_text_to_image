@@ -4,6 +4,7 @@ import datetime
 import requests
 import subprocess
 from dotenv import load_dotenv
+from icecream import ic
 
 load_dotenv()
 
@@ -50,6 +51,7 @@ def check_voicevox_server():
 
 @retry(tries=10)
 def synthesize_voice_with_timestamp(text, speaker=1):
+    print(SEP)
     print(f"音声合成するテキスト: {text}")
 
     start_voicevox_server()
