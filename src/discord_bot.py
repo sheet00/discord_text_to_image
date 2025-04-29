@@ -9,6 +9,8 @@ from google import genai
 import re
 from icecream import ic
 from tenacity import retry, stop_after_attempt, wait_fixed
+import math
+
 
 import generate_book as book
 
@@ -39,23 +41,31 @@ async def on_ready():
 
 def split_text(text: str) -> list[str]:
     """
-    テキストを300字以下になるまで2分割する。
+    テキストを200字以下になるまで分割する。
     300字以内の場合は分割しない。
+    分割数は動的に決定する。
     """
     if len(text) <= 300:
         return [text]
-    else:
-        result = []
-        parts = [text]
-        while parts:
-            part = parts.pop(0)
-            if len(part) <= 300:
-                result.append(part)
-            else:
-                mid = len(part) // 2
-                parts.append(part[:mid])
-                parts.append(part[mid:])
-        return result
+
+    parts = [text]
+    result = []
+
+    while parts:
+        part = parts.pop(0)
+        if len(part) <= 200:
+            result.append(part)
+        else:
+            # 分割数を決定 (パーツの長さを200で割った値を切り上げ)
+            num_splits = math.ceil(len(part) / 200)
+            split_size = len(part) // num_splits
+
+            for i in range(num_splits):
+                start = i * split_size
+                end = (i + 1) * split_size if i < num_splits - 1 else len(part)
+                parts.append(part[start:end])
+
+    return result
 
 
 async def handle_neko(message):
