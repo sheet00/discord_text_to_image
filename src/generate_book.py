@@ -436,7 +436,7 @@ def generate_image(data: MarkdownData, target_index: int) -> str:
 
     prompt = get_photo_prompt(content, scene)
     # ic(prompt)
-    return gi.generate_image_from_text_google(prompt)
+    return gi.generate_image_from_text_openai(prompt)
 
 
 def markdown_to_data(markdown_text: str) -> MarkdownData:

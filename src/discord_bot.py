@@ -211,7 +211,7 @@ async def handle_mention(message):
 
     # Gemini API呼び出し
     response = client.models.generate_content(
-        model="gemini-2.0-flash-exp", contents=prompt
+        model="gemini-2.5-flash-preview-04-17", contents=prompt
     )
 
     bot_reply = response.text
