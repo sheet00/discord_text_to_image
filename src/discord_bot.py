@@ -121,8 +121,7 @@ async def handle_speech(message):
 
     # 各テキスト断片ごとに音声合成と再生を実行
     for i, t in enumerate(texts):
-
-        await message.channel.send("[音声を生成中にゃ]")
+        await message.channel.send(f"[音声を生成中にゃ][{i+1}/{len(texts)}]")
 
         # 1. 音声合成
         filepath = synthesize_voice_with_timestamp(t)
@@ -142,6 +141,8 @@ async def handle_speech(message):
 
         # 4. 音声再生
         source = discord.FFmpegPCMAudio(filepath, executable="ffmpg/ffmpeg.exe")
+        await message.channel.send("[再生するにゃ]")
+
         if i == len(texts) - 1:
             # 最後のテキストの場合、再生終了後に切断する
             def after_playing(error):
