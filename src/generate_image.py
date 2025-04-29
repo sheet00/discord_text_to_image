@@ -40,6 +40,7 @@ def generate_image_from_text_openai(input_text: str) -> str:
     # 画像の生成
     result = client.images.generate(
         model=model,
+        moderation="low",
         prompt=prompt,
         size=size,
         quality=quality,
