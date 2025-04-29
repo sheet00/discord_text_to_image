@@ -41,11 +41,14 @@ async def on_ready():
 
 def split_text(text: str) -> list[str]:
     """
-    テキストを200字以下になるまで分割する。
-    300字以内の場合は分割しない。
+    テキストをsplit_size字以下になるまで分割する。
+    split_size字以内の場合は分割しない。
     分割数は動的に決定する。
     """
-    if len(text) <= 300:
+
+    split_size = 300
+
+    if len(text) <= split_size:
         return [text]
 
     parts = [text]
@@ -53,11 +56,11 @@ def split_text(text: str) -> list[str]:
 
     while parts:
         part = parts.pop(0)
-        if len(part) <= 200:
+        if len(part) <= split_size:
             result.append(part)
         else:
-            # 分割数を決定 (パーツの長さを200で割った値を切り上げ)
-            num_splits = math.ceil(len(part) / 200)
+            # 分割数を決定 (パーツの長さをsplit_sizeで割った値を切り上げ)
+            num_splits = math.ceil(len(part) / split_size)
             split_size = len(part) // num_splits
 
             for i in range(num_splits):
@@ -90,7 +93,7 @@ async def check_voice_channel(message, channel):
                     ic("voice_client.disconnect()")
                     await voice_client.disconnect()
 
-                    await asyncio.sleep(1)
+                    await asyncio.sleep(3)
 
                     ic("await channel.connect()")
                     voice_client = await channel.connect()
@@ -142,31 +145,9 @@ async def handle_speech(message):
         # 4. 音声再生
         source = discord.FFmpegPCMAudio(filepath, executable="ffmpg/ffmpeg.exe")
         await message.channel.send("[再生するにゃ]")
-
-        if i == len(texts) - 1:
-            # 最後のテキストの場合、再生終了後に切断する
-            def after_playing(error):
-                if error:
-                    ic(f"音声再生中にエラーが発生しました: {error}")
-                ic("最後の音声再生が終了しました。ボイスチャンネルから切断します。")
-                # 非同期関数をイベントループで実行するためにrun_coroutine_threadsafeを使用
-                coro = voice_client.disconnect()
-                fut = asyncio.run_coroutine_threadsafe(coro, client.loop)
-                try:
-                    fut.result()
-                    # 切断後に1秒待機
-                    coro_sleep = asyncio.sleep(1)
-                    fut_sleep = asyncio.run_coroutine_threadsafe(
-                        coro_sleep, client.loop
-                    )
-                    fut_sleep.result()
-                except Exception as e:
-                    ic(f"切断中にエラーが発生しました: {e}")
-
-            voice_client.play(source, after=after_playing)
-        else:
-            # 最後のテキストでない場合、通常再生
-            voice_client.play(source)
+        # 音声大気中に切れてしまうケースがあるため、再取得
+        voice_client = await check_voice_channel(message, channel)
+        voice_client.play(source)
 
 
 async def handle_text_to_image(message):
