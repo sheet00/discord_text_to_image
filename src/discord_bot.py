@@ -80,6 +80,13 @@ async def check_voice_channel(message, channel):
                     ic("voice_client.disconnect()")
                     await voice_client.disconnect()
 
+                    await asyncio.sleep(1)
+
+                    ic("await channel.connect()")
+                    voice_client = await channel.connect()
+
+                    return voice_client
+
             raise e
 
     return voice_client
@@ -103,7 +110,7 @@ async def handle_speech(message):
     voice_client = None
 
     # 各テキスト断片ごとに音声合成と再生を実行
-    for t in texts:
+    for i, t in enumerate(texts):
 
         await message.channel.send("[音声を生成中にゃ]")
 
@@ -117,11 +124,6 @@ async def handle_speech(message):
 
         # 2. ボイスチャンネル接続/再接続 (毎回確認)
         voice_client = await check_voice_channel(message, channel)
-        if not voice_client:  # 接続失敗した場合
-            await message.channel.send(
-                "ボイスチャンネルへの接続に失敗したため、再生を中断するにゃ"
-            )
-            return
 
         # 3. 再生中の場合は待機
         while voice_client.is_playing():
@@ -130,12 +132,24 @@ async def handle_speech(message):
 
         # 4. 音声再生
         source = discord.FFmpegPCMAudio(filepath, executable="ffmpg/ffmpeg.exe")
-        voice_client.play(source)
+        if i == len(texts) - 1:
+            # 最後のテキストの場合、再生終了後に切断する
+            def after_playing(error):
+                if error:
+                    ic(f"音声再生中にエラーが発生しました: {error}")
+                ic("最後の音声再生が終了しました。ボイスチャンネルから切断します。")
+                # 非同期関数をイベントループで実行するためにrun_coroutine_threadsafeを使用
+                coro = voice_client.disconnect()
+                fut = asyncio.run_coroutine_threadsafe(coro, client.loop)
+                try:
+                    fut.result()
+                except Exception as e:
+                    ic(f"切断中にエラーが発生しました: {e}")
 
-    # finally:
-    # # 再生終了後に切断する場合はコメント解除
-    # if voice_client and voice_client.is_connected():
-    #     await voice_client.disconnect()
+            voice_client.play(source, after=after_playing)
+        else:
+            # 最後のテキストでない場合、通常再生
+            voice_client.play(source)
 
 
 async def handle_text_to_image(message):
