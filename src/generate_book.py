@@ -150,7 +150,7 @@ def get_scene(input_text: str, prev_text: str) -> str:
     print(SEP)
     # print(prompt)
     response = client.models.generate_content(
-        model="gemini-2.5-pro-exp-03-25",
+        model="gemini-2.5-flash-preview-04-17",
         contents=prompt,
         config={
             "response_mime_type": "application/json",

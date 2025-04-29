@@ -8,7 +8,7 @@ from generate_voice import synthesize_voice_with_timestamp, check_voicevox_serve
 from google import genai
 import re
 from icecream import ic
-from retry import retry
+from tenacity import retry, stop_after_attempt, wait_fixed
 
 import generate_book as book
 
@@ -41,8 +41,9 @@ async def handle_neko(message):
     await message.channel.send("ポンにゃ")
 
 
-@retry(tries=3)
+@retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
 async def check_voice_channel(message, channel):
+
     voice_client = message.guild.voice_client
     if voice_client is None or not voice_client.is_connected():
         try:
@@ -89,6 +90,7 @@ async def handle_speech(message):
         return
 
     # 音声を順番に再生
+    voice_client = None
     for filepath in filepaths:
         # ボイスチャンネル取得
         voice_client = await check_voice_channel(message, channel)
@@ -103,6 +105,15 @@ async def handle_speech(message):
         voice_client = await check_voice_channel(message, channel)
         source = discord.FFmpegPCMAudio(filepath, executable="ffmpg/ffmpeg.exe")
         voice_client.play(source)
+
+        # 再生が終わるまで待機
+        if voice_client:
+            while voice_client.is_playing():
+                await asyncio.sleep(1)
+
+    # ボイスチャンネルから離脱
+    if voice_client:
+        await voice_client.disconnect()
 
 
 async def handle_text_to_image(message):
