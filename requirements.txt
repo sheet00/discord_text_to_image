@@ -7,4 +7,4 @@ pillow
 icecream
 beautifulsoup4
 boto3
-retry
+tenacity

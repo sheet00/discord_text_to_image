@@ -106,15 +106,6 @@ async def handle_speech(message):
         source = discord.FFmpegPCMAudio(filepath, executable="ffmpg/ffmpeg.exe")
         voice_client.play(source)
 
-        # 再生が終わるまで待機
-        if voice_client:
-            while voice_client.is_playing():
-                await asyncio.sleep(1)
-
-    # ボイスチャンネルから離脱
-    if voice_client:
-        await voice_client.disconnect()
-
 
 async def handle_text_to_image(message):
     """
