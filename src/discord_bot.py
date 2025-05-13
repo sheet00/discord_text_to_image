@@ -297,7 +297,9 @@ async def on_message(message):
 
     if message.content.startswith("/book"):
         message = await extract_text_from_attachment(message)
-        await handle_book(message)
+        if message:
+            await handle_book(message)
+
         return
 
     if client.user in message.mentions:
