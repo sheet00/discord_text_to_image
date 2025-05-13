@@ -2,6 +2,7 @@ import asyncio
 import os
 from dotenv import load_dotenv
 import discord
+from discord import VoiceClient, Message
 from generate_image import generate_image_from_text_google
 from generate_image import generate_image_from_text_openai
 from generate_voice import synthesize_voice_with_timestamp
@@ -43,36 +44,28 @@ async def handle_neko(message):
 
 
 @retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
-async def check_voice_channel(message, channel):
-    voice_client = message.guild.voice_client
-    if voice_client is None or not voice_client.is_connected():
-        try:
-            voice_client = await channel.connect()
-        except Exception as e:
-            ic(voice_client, e)
-            await message.channel.send(
-                f"ボイスチャンネルへの接続に失敗したにゃ: {str(e)}"
-            )
+async def get_voice_client(message: Message) -> VoiceClient:
+    """
+    ボイスクライアント取得
 
-            # Already connected to a voice channel.対応
-            if str(e) == "Already connected to a voice channel.":
-                if voice_client:
-                    ic("voice_client.disconnect()")
-                    await voice_client.disconnect()
+    未接続の場合は新規接続し応答
+    接続済みの場合は、既存のインスタンス応答
+    """
 
-                    await asyncio.sleep(3)
+    # 既に接続済みの場合はvoice_client
+    # 未接続の場合はNone
+    voice_client: VoiceClient = message.guild.voice_client
 
-                    ic("await channel.connect()")
-                    voice_client = await channel.connect()
+    # 新規接続
+    if not voice_client:
+        voice_client = await message.author.voice.channel.connect()
+        return voice_client
 
-                    return voice_client
-
-            raise e
-
+    # 接続済みの場合は既存インスタンス応答
     return voice_client
 
 
-async def handle_speech(message):
+async def handle_speech(message: Message):
     text = get_prompt(message.content, "/talk")
 
     if not text:
@@ -86,8 +79,6 @@ async def handle_speech(message):
     if not (message.author.voice and message.author.voice.channel):
         await message.channel.send("ボイスチャンネルに参加してからコマンドを使ってにゃ")
         return
-    channel = message.author.voice.channel
-    voice_client = None
 
     # 各テキスト断片ごとに音声合成と再生を実行
     for i, t in enumerate(texts):
@@ -101,8 +92,8 @@ async def handle_speech(message):
             )
             continue  # 次のテキストへ
 
-        # 2. ボイスチャンネル接続/再接続 (毎回確認)
-        voice_client = await check_voice_channel(message, channel)
+        # 2. ボイスチャンネル取得
+        voice_client = await get_voice_client(message)
 
         # 3. 再生中の場合は待機
         while voice_client.is_playing():
@@ -112,8 +103,9 @@ async def handle_speech(message):
         # 4. 音声再生
         source = discord.FFmpegPCMAudio(filepath, executable="ffmpg/ffmpeg.exe")
         await message.channel.send("[再生するにゃ]")
-        # 音声大気中に切れてしまうケースがあるため、再取得
-        voice_client = await check_voice_channel(message, channel)
+        # 音声待機中に切れてしまうケースがあるため、再取得
+        voice_client = await get_voice_client(message)
+
         voice_client.play(source)
 
 
@@ -164,11 +156,11 @@ async def handle_book(message):
         await message.channel.send("[画像を生成中にゃ]")
 
         filename = None
-        try:
-            filename = book.generate_image(data, i)
+        # try:
+        #     filename = book.generate_image(data, i)
 
-        except Exception as e:
-            await message.channel.send(str(e))
+        # except Exception as e:
+        #     await message.channel.send(str(e))
 
         content = data.paragraph[i]
         await message.channel.send(content)
