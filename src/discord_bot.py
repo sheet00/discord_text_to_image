@@ -174,7 +174,7 @@ async def handle_book(message):
 
 
 async def handle_save(message: Message):
-    await asyncio.to_thread(book.save, message.content)
+    await book.save(message.content, message)
 
 
 async def handle_list(message: Message):

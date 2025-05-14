@@ -502,12 +502,66 @@ def make_root_dir(data: MarkdownData) -> str:
     return dir_path
 
 
-def save(input_text: str):
+from discord import Message
+
+
+async def save(input_text: str, message: Message):
 
     start_time = time.time()
 
     data = markdown_to_data(input_text)
-    ic(data)
+    # ic(data)
+    dir_path = make_root_dir(data)
+    paragraph_count = len(data.paragraph)
+
+    for i in range(paragraph_count):
+        ic(i, paragraph_count, SEP)
+        await message.channel.send(f"book生成中にゃ {i+1}/{paragraph_count}")
+
+        paragraph_path = os.path.join(dir_path, str(i))
+        os.makedirs(paragraph_path, exist_ok=True)
+
+        # 初回のみタイトル設定
+        target_text = ""
+        if i == 0:
+            target_text = f"## {data.title}\n\n"
+
+        target_text += data.paragraph[i]
+
+        target_file_path = os.path.join(paragraph_path, "target.txt")
+        with open(target_file_path, "w", encoding="utf-8") as f:
+            f.write(target_text)
+
+        # 画像処理
+        image_path = os.path.join(paragraph_path, "target.png")
+
+        if not os.path.exists(image_path):
+            result_path = generate_image(data, i)
+            shutil.move(result_path, image_path)
+
+        # 音声処理
+        texts = utils.split_text(data.paragraph[i])
+        for j, t in enumerate(texts):
+            wav_path = os.path.join(paragraph_path, f"{j}.wav")
+
+            if not os.path.exists(wav_path):
+                result_path = gv.synthesize_voice_with_timestamp(t)
+                shutil.move(result_path, wav_path)
+
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    print(f"実行時間: {elapsed_time:.2f}秒")
+    await message.channel.send(f"[{data.title}]として保存したにゃ {elapsed_time:.2f}秒")
+
+
+def main():
+    with open("work/14.md", "r", encoding="utf-8") as f:
+        input_text = f.read()
+
+    start_time = time.time()
+
+    data = markdown_to_data(input_text)
+    # ic(data)
     dir_path = make_root_dir(data)
 
     for i in range(len(data.paragraph)):
@@ -545,12 +599,6 @@ def save(input_text: str):
     end_time = time.time()
     elapsed_time = end_time - start_time
     print(f"実行時間: {elapsed_time:.2f}秒")
-
-
-def main():
-    with open("work/14.md", "r", encoding="utf-8") as f:
-        input_text = f.read()
-        save(input_text)
 
 
 if __name__ == "__main__":
