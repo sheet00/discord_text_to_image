@@ -13,6 +13,7 @@ from tenacity import retry, stop_after_attempt, wait_fixed
 import generate_book as book
 
 import utils as utils
+import base64
 
 SEP = "-" * 100
 
@@ -171,12 +172,41 @@ async def handle_book(message):
         await handle_speech(message)
 
 
-async def handle_save(message:Message):
+async def handle_save(message: Message):
     pass
 
 
-async def handle_list():
-    pass
+async def handle_list(message: Message):
+    """
+    /bookフォルダ内のフォルダ一覧を取得し、Base64デコードしてマークダウンリストとして出力する
+    """
+    book_dir = "./book"
+    if not os.path.isdir(book_dir):
+        await message.channel.send("`/book` ディレクトリが見つかりません。")
+        return
+
+    entries = os.listdir(book_dir)
+    folders = sorted(
+        [entry for entry in entries if os.path.isdir(os.path.join(book_dir, entry))]
+    )
+
+    if not folders:
+        await message.channel.send("`/book` ディレクトリにフォルダがありません。")
+        return
+
+    folder_list = []
+    for folder in folders:
+        try:
+            # Base64URLデコードのために末尾に'='を補う
+            padded_folder = folder + "=" * ((4 - len(folder) % 4) % 4)
+            decoded_name = base64.urlsafe_b64decode(padded_folder).decode("utf-8")
+            folder_list.append(f"- {decoded_name}")
+        except Exception as e:
+            ic(f"Error decoding folder name {folder}: {e}")
+            folder_list.append(f"- {folder} (デコード失敗)")
+
+    response = "## ブック一覧\n" + "\n".join(folder_list)
+    await message.channel.send(response)
 
 
 async def handle_load():
@@ -264,7 +294,6 @@ async def handle_help(message):
 # メッセージ受信時に動作する処理
 @client.event
 async def on_message(message):
-
     async def extract_text_from_attachment(message):
         """
         添付ファイルあり
@@ -310,6 +339,10 @@ async def on_message(message):
         if message:
             await handle_book(message)
 
+        return
+
+    if message.content.startswith("/list"):
+        await handle_list(message)
         return
 
     if client.user in message.mentions:
