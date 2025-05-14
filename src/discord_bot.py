@@ -210,8 +210,75 @@ async def handle_list(message: Message):
     await message.channel.send(response)
 
 
-async def handle_load():
-    pass
+async def handle_load(message: Message):
+    """
+    /load コマンドを処理し、指定されたタイトルのブックを読み込み、
+    テキスト、画像、音声ファイルを送信します。
+    """
+    title = get_prompt(message.content, "/load")
+    if not title:
+        await message.channel.send(
+            "読み込むブックのタイトルを指定してくださいにゃ。例: `/load ブックタイトル`"
+        )
+        return
+
+    # ボイスチャンネルの確認
+    if not (message.author.voice and message.author.voice.channel):
+        await message.channel.send("ボイスチャンネルに参加してからコマンドを使ってにゃ")
+        return
+
+    encoded_dir_name = (
+        base64.urlsafe_b64encode(title.encode("utf-8")).decode("utf-8").rstrip("=")
+    )
+    dir_path = os.path.join("book", encoded_dir_name)
+
+    if not os.path.exists(dir_path):
+        await message.channel.send(f"ブック '{title}' は見つかりませんでしたにゃ。")
+        return
+
+    # 対象フォルダ内の子フォルダ一覧を取得
+    subdirectories = [
+        d for d in os.listdir(dir_path) if os.path.isdir(os.path.join(dir_path, d))
+    ]
+
+    for subdir_name in sorted(subdirectories):  # 子フォルダ名をソートして順番に処理
+        subdir_path = os.path.join(dir_path, subdir_name)
+
+        # テキスト処理
+        text_file_path = os.path.join(subdir_path, "target.txt")
+        if os.path.exists(text_file_path):
+            with open(text_file_path, "r", encoding="utf-8") as f:
+                content = f.read()
+                await message.channel.send(content)
+
+        # 画像処理
+        image_file_path = os.path.join(subdir_path, "target.png")
+        if os.path.exists(image_file_path):
+            await message.channel.send(file=discord.File(image_file_path))
+
+        # 音声処理
+        wav_files = [
+            os.path.join(subdir_path, f)
+            for f in os.listdir(subdir_path)
+            if f.endswith(".wav") and os.path.isfile(os.path.join(subdir_path, f))
+        ]
+
+        voice_client = await get_voice_client(message)
+        for filepath in wav_files:
+            while voice_client.is_playing():
+                ic("前回音声処理が終わるまで待機")
+                await asyncio.sleep(1)
+
+            source = discord.FFmpegPCMAudio(filepath, executable="ffmpg/ffmpeg.exe")
+            voice_client = await get_voice_client(message)
+
+            voice_client.play(source)
+
+        while voice_client.is_playing():
+            ic("段落の音声処理が終わるまで待機")
+            await asyncio.sleep(1)
+
+    await message.channel.send("おしまいにゃ。")
 
 
 async def handle_mention(message):
@@ -355,6 +422,11 @@ async def on_message(message):
         if message:
             await handle_save(message)
 
+        return
+
+    # bookロード処理
+    if message.content.startswith("/load"):
+        await handle_load(message)
         return
 
     if client.user in message.mentions:

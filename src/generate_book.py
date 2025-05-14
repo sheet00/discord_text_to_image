@@ -10,6 +10,7 @@ from google import genai
 from icecream import ic
 import markdown
 from pydantic import BaseModel, Field
+from discord import Message
 
 import generate_image as gi
 import generate_voice as gv
@@ -500,9 +501,6 @@ def make_root_dir(data: MarkdownData) -> str:
         f.write(data.all_text)
 
     return dir_path
-
-
-from discord import Message
 
 
 async def save(input_text: str, message: Message):
