@@ -1,12 +1,20 @@
+import base64
+import os
+import shutil
+import time
+from typing import Optional, List
+
+import bs4
+from dotenv import load_dotenv
+from google import genai
 from icecream import ic
 import markdown
-import bs4
-import os
-from google import genai
-from dotenv import load_dotenv
 from pydantic import BaseModel, Field
-from typing import Optional, List
+
 import generate_image as gi
+import generate_voice as gv
+import utils as utils
+
 
 load_dotenv()
 SEP = "-" * 100
@@ -157,9 +165,14 @@ def get_scene(input_text: str, prev_text: str) -> str:
             "response_schema": SceneAnalysisResult,
         },
     )
-    # JSONとしてパースされたオブジェクトから取得
-    result = SceneAnalysisResult.model_validate_json(response.text)
-    result = result.model_dump()
+
+    try:
+        result = SceneAnalysisResult.model_validate_json(response.text)
+        result = result.model_dump()
+    except Exception as e:
+        ic(e)
+        result = None
+
     ic(input_text, result)
     return result
 
@@ -436,10 +449,19 @@ def generate_image(data: MarkdownData, target_index: int) -> str:
 
     prompt = get_photo_prompt(content, scene)
     # ic(prompt)
-    return gi.generate_image_from_text_openai(prompt)
+    image_path = gi.generate_image_from_text_openai(prompt)
+    # 画像を移動
+    dir_path = make_root_dir(data)
+    folder_path = os.path.join(dir_path, str(target_index))
+    os.makedirs(folder_path, exist_ok=True)
+    shutil.move(image_path, os.path.join(folder_path, os.path.basename(image_path)))
+    return os.path.join(folder_path, os.path.basename(image_path))
 
 
 def markdown_to_data(markdown_text: str) -> MarkdownData:
+
+    # MDに/bookが含まれている場合は除去
+    markdown_text = markdown_text.replace("/book", "").strip()
     html = markdown.markdown(markdown_text)
     soup = bs4.BeautifulSoup(html, "html.parser")
     # ic(str(soup))
@@ -461,17 +483,73 @@ def markdown_to_data(markdown_text: str) -> MarkdownData:
     return MarkdownData(title=title, paragraph=paragraphs, all_text=markdown_text)
 
 
+def make_root_dir(data: MarkdownData) -> str:
+    """
+    対象MDのフォルダ作成、本文保存
+    """
+    encoded_dir_name = (
+        base64.urlsafe_b64encode(data.title.encode("utf-8")).decode("utf-8").rstrip("=")
+    )
+    dir_path = os.path.join("book", encoded_dir_name)
+
+    os.makedirs(dir_path, exist_ok=True)
+
+    markdown_file_path = os.path.join(dir_path, "target.md")
+    with open(markdown_file_path, "w", encoding="utf-8") as f:
+        f.write(data.all_text)
+
+    return dir_path
+
+
+def save():
+    pass
+
+
 def main():
+    start_time = time.time()
+
     with open("work/14.md", "r", encoding="utf-8") as f:
         input_text = f.read()
 
     data = markdown_to_data(input_text)
-
     # ic(data)
+    dir_path = make_root_dir(data)
 
     for i in range(len(data.paragraph)):
-        result = generate_image(data, i)
-        print(result)
+        ic(i, SEP)
+        paragraph_path = os.path.join(dir_path, str(i))
+        os.makedirs(paragraph_path, exist_ok=True)
+
+        # 初回のみタイトル設定
+        target_text = ""
+        if i == 0:
+            target_text = f"## {data.title}\n\n"
+
+        target_text += data.paragraph[i]
+
+        target_file_path = os.path.join(paragraph_path, "target.txt")
+        with open(target_file_path, "w", encoding="utf-8") as f:
+            f.write(target_text)
+
+        # 画像処理
+        image_path = os.path.join(paragraph_path, "target.png")
+
+        if not os.path.exists(image_path):
+            result_path = generate_image(data, i)
+            shutil.move(result_path, image_path)
+
+        # 音声処理
+        texts = utils.split_text(data.paragraph[i])
+        for j, t in enumerate(texts):
+            wav_path = os.path.join(paragraph_path, f"{j}.wav")
+
+            if not os.path.exists(wav_path):
+                result_path = gv.synthesize_voice_with_timestamp(t)
+                shutil.move(result_path, wav_path)
+
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    print(f"実行時間: {elapsed_time:.2f}秒")
 
 
 if __name__ == "__main__":

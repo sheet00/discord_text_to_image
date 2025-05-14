@@ -171,6 +171,18 @@ async def handle_book(message):
         await handle_speech(message)
 
 
+async def handle_save(message:Message):
+    pass
+
+
+async def handle_list():
+    pass
+
+
+async def handle_load():
+    pass
+
+
 async def handle_mention(message):
     global channel_histories
 
@@ -270,8 +282,6 @@ async def on_message(message):
         if attachment.filename == "message.txt":
             data = await attachment.read()
             text = data.decode("utf-8")
-            # MDに/bookが含まれている場合は除去
-            text = text.replace("/book", "")
             message.content = f"/book {text}"
 
             return message
