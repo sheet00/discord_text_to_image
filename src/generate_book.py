@@ -459,9 +459,10 @@ def generate_image(data: MarkdownData, target_index: int) -> str:
 
 
 def markdown_to_data(markdown_text: str) -> MarkdownData:
-
     # MDに/bookが含まれている場合は除去
-    markdown_text = markdown_text.replace("/book", "").strip()
+    for word in ["/book", "/save"]:
+        markdown_text = markdown_text.replace(word, "").strip()
+
     html = markdown.markdown(markdown_text)
     soup = bs4.BeautifulSoup(html, "html.parser")
     # ic(str(soup))
@@ -501,18 +502,12 @@ def make_root_dir(data: MarkdownData) -> str:
     return dir_path
 
 
-def save():
-    pass
+def save(input_text: str):
 
-
-def main():
     start_time = time.time()
 
-    with open("work/14.md", "r", encoding="utf-8") as f:
-        input_text = f.read()
-
     data = markdown_to_data(input_text)
-    # ic(data)
+    ic(data)
     dir_path = make_root_dir(data)
 
     for i in range(len(data.paragraph)):
@@ -550,6 +545,12 @@ def main():
     end_time = time.time()
     elapsed_time = end_time - start_time
     print(f"実行時間: {elapsed_time:.2f}秒")
+
+
+def main():
+    with open("work/14.md", "r", encoding="utf-8") as f:
+        input_text = f.read()
+        save(input_text)
 
 
 if __name__ == "__main__":

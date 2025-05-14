@@ -12,6 +12,7 @@ from icecream import ic
 from tenacity import retry, stop_after_attempt, wait_fixed
 import generate_book as book
 
+import time
 import utils as utils
 import base64
 
@@ -86,7 +87,7 @@ async def handle_speech(message: Message):
         await message.channel.send(f"[音声を生成中にゃ][{i+1}/{len(texts)}]")
 
         # 1. 音声合成
-        filepath = synthesize_voice_with_timestamp(t)
+        filepath = await asyncio.to_thread(synthesize_voice_with_timestamp, t)
         if filepath is None:
             await message.channel.send(
                 f"テキスト「{t[:20]}...」の音声合成に失敗したにゃ"
@@ -126,9 +127,9 @@ async def handle_text_to_image(message):
     try:
         image_generator = os.getenv("IMAGE_GENERATOR", "google").lower()
         if image_generator == "google":
-            filename = generate_image_from_text_google(prompt)
+            filename = await asyncio.to_thread(generate_image_from_text_google, prompt)
         elif image_generator == "openai":
-            filename = generate_image_from_text_openai(prompt)
+            filename = await asyncio.to_thread(generate_image_from_text_openai, prompt)
         else:
             await message.channel.send(
                 f"無効な画像ジェネレーター: {image_generator}。'google' または 'openai' を指定してにゃ。"
@@ -151,7 +152,7 @@ async def handle_book(message):
         await message.channel.send("プロンプトが空にゃ。/book の後に説明文を入れてにゃ")
         return
 
-    data = book.markdown_to_data(prompt)
+    data = await asyncio.to_thread(book.markdown_to_data, prompt)
     for i in range(len(data.paragraph)):
         await message.channel.send(SEP)
         await message.channel.send("[画像を生成中にゃ]")
@@ -173,7 +174,7 @@ async def handle_book(message):
 
 
 async def handle_save(message: Message):
-    pass
+    await asyncio.to_thread(book.save, message.content)
 
 
 async def handle_list(message: Message):
@@ -258,8 +259,10 @@ async def handle_mention(message):
     client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
     # Gemini API呼び出し
-    response = client.models.generate_content(
-        model="gemini-2.5-flash-preview-04-17", contents=prompt
+    response = await asyncio.to_thread(
+        client.models.generate_content,
+        model="gemini-2.5-flash-preview-04-17",
+        contents=prompt,
     )
 
     bot_reply = response.text
@@ -298,7 +301,7 @@ async def on_message(message):
         """
         添付ファイルあり
         message.txtという名前の添付ファイルがある場合、
-        その内容を読み取り、/bookコマンドの引数として設定します。
+        その内容を読み取り、/saveコマンドの引数として設定します。
 
         添付がない場合は通常message応答
         """
@@ -311,7 +314,7 @@ async def on_message(message):
         if attachment.filename == "message.txt":
             data = await attachment.read()
             text = data.decode("utf-8")
-            message.content = f"/book {text}"
+            message.content = f"/save {text}"
 
             return message
 
@@ -341,8 +344,17 @@ async def on_message(message):
 
         return
 
+    # book一覧表示
     if message.content.startswith("/list"):
         await handle_list(message)
+        return
+
+    # book保存処理
+    if message.content.startswith("/save"):
+        message = await extract_text_from_attachment(message)
+        if message:
+            await handle_save(message)
+
         return
 
     if client.user in message.mentions:
