@@ -1,20 +1,22 @@
 import asyncio
+import base64
 import os
-from dotenv import load_dotenv
+import re
+
 import discord
 from discord import VoiceClient, Message
-from generate_image import generate_image_from_text_google
-from generate_image import generate_image_from_text_openai
-from generate_voice import synthesize_voice_with_timestamp
+from dotenv import load_dotenv
 from google import genai
-import re
 from icecream import ic
 from tenacity import retry, stop_after_attempt, wait_fixed
-import generate_book as book
 
-import time
-import utils as utils
-import base64
+import generate_book as book
+from generate_image import (
+    generate_image_from_text_google,
+    generate_image_from_text_openai,
+)
+from generate_voice import synthesize_voice_with_timestamp
+import utils
 
 SEP = "-" * 100
 
@@ -142,37 +144,6 @@ async def handle_text_to_image(message):
         await message.channel.send(f"画像生成中にエラーが発生したにゃ: {str(e)}")
 
 
-async def handle_book(message):
-    """
-    シーンからの画像生成
-    """
-
-    prompt = get_prompt(message.content, "/book")
-    if not prompt:
-        await message.channel.send("プロンプトが空にゃ。/book の後に説明文を入れてにゃ")
-        return
-
-    data = await asyncio.to_thread(book.markdown_to_data, prompt)
-    for i in range(len(data.paragraph)):
-        await message.channel.send(SEP)
-        await message.channel.send("[画像を生成中にゃ]")
-
-        filename = None
-        # try:
-        #     filename = book.generate_image(data, i)
-
-        # except Exception as e:
-        #     await message.channel.send(str(e))
-
-        content = data.paragraph[i]
-        await message.channel.send(content)
-        if filename:
-            await message.channel.send(file=discord.File(filename))
-
-        message.content = f"/talk {content}"
-        await handle_speech(message)
-
-
 async def handle_save(message: Message):
     await book.save(message.content, message)
 
@@ -195,16 +166,7 @@ async def handle_list(message: Message):
         await message.channel.send("`/book` ディレクトリにフォルダがありません。")
         return
 
-    folder_list = []
-    for folder in folders:
-        try:
-            # Base64URLデコードのために末尾に'='を補う
-            padded_folder = folder + "=" * ((4 - len(folder) % 4) % 4)
-            decoded_name = base64.urlsafe_b64decode(padded_folder).decode("utf-8")
-            folder_list.append(f"- {decoded_name}")
-        except Exception as e:
-            ic(f"Error decoding folder name {folder}: {e}")
-            folder_list.append(f"- {folder} (デコード失敗)")
+    folder_list = [f"- {folder_name}" for folder_name in folders]
 
     response = "## ブック一覧\n" + "\n".join(folder_list)
     await message.channel.send(response)
@@ -227,21 +189,24 @@ async def handle_load(message: Message):
         await message.channel.send("ボイスチャンネルに参加してからコマンドを使ってにゃ")
         return
 
-    encoded_dir_name = (
-        base64.urlsafe_b64encode(title.encode("utf-8")).decode("utf-8").rstrip("=")
-    )
-    dir_path = os.path.join("book", encoded_dir_name)
+    dir_path = os.path.join("book", title)
 
     if not os.path.exists(dir_path):
         await message.channel.send(f"ブック '{title}' は見つかりませんでしたにゃ。")
         return
 
-    # 対象フォルダ内の子フォルダ一覧を取得
+    # 対象フォルダ内の子フォルダ一覧を取得し、数値としてソート後、文字列に戻す
     subdirectories = [
-        d for d in os.listdir(dir_path) if os.path.isdir(os.path.join(dir_path, d))
+        str(d)
+        for d in sorted(
+            [
+                int(d)
+                for d in os.listdir(dir_path)
+                if os.path.isdir(os.path.join(dir_path, d)) and d.isdigit()
+            ]
+        )
     ]
-
-    for subdir_name in sorted(subdirectories):  # 子フォルダ名をソートして順番に処理
+    for subdir_name in subdirectories:
         subdir_path = os.path.join(dir_path, subdir_name)
 
         # テキスト処理
@@ -354,9 +319,11 @@ async def handle_help(message):
     `/neko`: 猫の鳴き声を送信します。
     `/image [プロンプト]`: 指定されたプロンプトに基づいて画像を生成します。
     `/talk [テキスト]`: 指定されたテキストを音声で再生します。
+    `/save [テキスト]`: テキストをブックとして保存します。message.txtという名前の添付ファイルがある場合、その内容を保存します。
+    `/list`: 保存されているブックの一覧を表示します。
+    `/load [タイトル]`: 指定されたタイトルのブックを読み込み、テキスト、画像、音声を送信します。
     `@ずんだもん`: ずんだもんにメンションすると、会話できます。
     `/help`: コマンド一覧を表示します。
-    `/book [プロンプト]`: 指定されたプロンプトに基づいて画像を生成します(本のシーン)。
     """
     await message.channel.send(help_message)
 
@@ -402,13 +369,6 @@ async def on_message(message):
 
     if message.content.startswith("/talk"):
         await handle_speech(message)
-        return
-
-    if message.content.startswith("/book"):
-        message = await extract_text_from_attachment(message)
-        if message:
-            await handle_book(message)
-
         return
 
     # book一覧表示

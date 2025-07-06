@@ -1,3 +1,5 @@
+.roo
+
 .env
 wav/
 img/
@@ -5,3 +7,5 @@ __pycache__/
 work/
 
 book/
+
+.pytest_cache

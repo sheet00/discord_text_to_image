@@ -59,8 +59,9 @@ def synthesize_voice_with_timestamp(text, speaker=1):
     try:
         status_code = check_voicevox_server()
         if status_code != 200:
-            print(f"Voicevoxサーバーが起動していません (status_code={status_code})")
-            return status_code
+            raise Exception(
+                f"Voicevoxサーバーが起動していません (status_code={status_code})"
+            )
 
         # 現在時刻を取得し、ファイル名を生成
         now = datetime.datetime.now()

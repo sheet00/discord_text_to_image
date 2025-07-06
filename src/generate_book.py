@@ -7,10 +7,12 @@ from typing import Optional, List
 import bs4
 from dotenv import load_dotenv
 from google import genai
+import argparse
 from icecream import ic
 import markdown
 from pydantic import BaseModel, Field
 from discord import Message
+from tenacity import retry, stop_after_attempt, wait_fixed
 
 import generate_image as gi
 import generate_voice as gv
@@ -119,6 +121,7 @@ class SceneAnalysisResult(BaseModel):
     )
 
 
+@retry(stop=stop_after_attempt(3), wait=wait_fixed(1))
 def get_scene(input_text: str, prev_text: str) -> str:
     """
     Gemini APIを使って日本語からシーンを抽出する
@@ -159,7 +162,7 @@ def get_scene(input_text: str, prev_text: str) -> str:
     print(SEP)
     # print(prompt)
     response = client.models.generate_content(
-        model="gemini-2.5-flash-preview-04-17",
+        model="gemini-2.5-flash",
         contents=prompt,
         config={
             "response_mime_type": "application/json",
@@ -450,13 +453,12 @@ def generate_image(data: MarkdownData, target_index: int) -> str:
 
     prompt = get_photo_prompt(content, scene)
     # ic(prompt)
-    image_path = gi.generate_image_from_text_openai(prompt)
-    # 画像を移動
-    dir_path = make_root_dir(data)
-    folder_path = os.path.join(dir_path, str(target_index))
-    os.makedirs(folder_path, exist_ok=True)
-    shutil.move(image_path, os.path.join(folder_path, os.path.basename(image_path)))
-    return os.path.join(folder_path, os.path.basename(image_path))
+    try:
+        image_path = gi.generate_image_from_text_openai(prompt)
+        return image_path
+    except Exception as e:
+        ic(f"画像生成エラー: {e}")
+        return None
 
 
 def markdown_to_data(markdown_text: str) -> MarkdownData:
@@ -489,10 +491,7 @@ def make_root_dir(data: MarkdownData) -> str:
     """
     対象MDのフォルダ作成、本文保存
     """
-    encoded_dir_name = (
-        base64.urlsafe_b64encode(data.title.encode("utf-8")).decode("utf-8").rstrip("=")
-    )
-    dir_path = os.path.join("book", encoded_dir_name)
+    dir_path = os.path.join("book", data.title)
 
     os.makedirs(dir_path, exist_ok=True)
 
@@ -535,7 +534,8 @@ async def save(input_text: str, message: Message):
 
         if not os.path.exists(image_path):
             result_path = generate_image(data, i)
-            shutil.move(result_path, image_path)
+            if result_path:
+                shutil.move(result_path, image_path)
 
         # 音声処理
         texts = utils.split_text(data.paragraph[i])
@@ -553,7 +553,17 @@ async def save(input_text: str, message: Message):
 
 
 def main():
-    with open("work/14.md", "r", encoding="utf-8") as f:
+    parser = argparse.ArgumentParser(
+        description="Markdownファイルを読み込み、各段落から画像を生成します。"
+    )
+    parser.add_argument(
+        "--input_file", default="work/01.md", help="処理するMarkdownファイルのパス"
+    )
+    args = parser.parse_args()
+
+    input_file_path = args.input_file
+
+    with open(input_file_path, "r", encoding="utf-8") as f:
         input_text = f.read()
 
     start_time = time.time()
@@ -561,9 +571,10 @@ def main():
     data = markdown_to_data(input_text)
     # ic(data)
     dir_path = make_root_dir(data)
+    paragraph_count = len(data.paragraph)
 
-    for i in range(len(data.paragraph)):
-        ic(i, SEP)
+    for i in range(paragraph_count):
+        ic(i, paragraph_count, SEP)
         paragraph_path = os.path.join(dir_path, str(i))
         os.makedirs(paragraph_path, exist_ok=True)
 
@@ -583,7 +594,8 @@ def main():
 
         if not os.path.exists(image_path):
             result_path = generate_image(data, i)
-            shutil.move(result_path, image_path)
+            if result_path:
+                shutil.move(result_path, image_path)
 
         # 音声処理
         texts = utils.split_text(data.paragraph[i])
